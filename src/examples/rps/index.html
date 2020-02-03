@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <script type='text/javascript' src='/src/core/core.js'></script>
+        <script type='text/javascript' src='/src/games/rps/rps-core.js'></script>
+        <script type='text/javascript' src='/src/examples/rps/rps-human.js'></script>
+        <script type='text/javascript' src='/src/examples/rps/rps-rand-comp.js'></script>
+        <script type='text/javascript'>
+            window.onload = function() {
+                mod = new RPSGameModerator(new ComputerRPSPlayer(), new HumanRPSPlayer());
+
+                mod.runGame();
+            }
+        </script>
+    </head>
+    <body>
+        <h2>Choose your move:</h2>
+
+        <button id='rock-btn'>Rock</button>
+        <button id='paper-btn'>Paper</button>
+        <button id='scissors-btn'>Scissors</button>
+
+        <p id='p1-action-display'></p>
+        <p id='p2-action-display'></p>
+        <p id='outcome-display'></p>
+
+    </body>
+</html>
+

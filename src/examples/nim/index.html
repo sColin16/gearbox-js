@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <script type='text/javascript' src='/src/core/core.js'></script>
+        <script type='text/javascript' src='/src/games/nim/nim-core.js'></script>
+        <script type='text/javascript' src='/src/examples/nim/nim-human.js'></script>
+        <script type='text/javascript' src='/src/examples/nim/nim-comp.js'></script>
+        <script type='text/javascript'>
+            window.onload = function() {
+                mod = new NimGameModerator(new HumanNimPlayer(), new ComputerNimPlayer(), 17);
+
+                mod.runGame();
+            }
+        </script>
+    </head>
+
+    <body>
+        <h2>Tokens remaining:</h2>
+        <p id='tokens-display'>TOKEN COUNT GOES HERE</p>
+
+        <h2>How many tokens do you want to take?</h2>
+
+        <button id='one-btn'>One</button>
+        <button id='two-btn'>Two</button>
+
+        <p id='outcome-display'></p>
+
+        <div id='move-history-display'></div>
+    </body>
+
+</html>
+
