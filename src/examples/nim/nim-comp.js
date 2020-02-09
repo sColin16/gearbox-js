@@ -9,8 +9,9 @@ class ComputerNimPlayer extends Player {
         console.log('Computer is gettin an action');
 
         let action;
-
-        if (state.tokensLeft % 2 === 1 || state.tokensLeft === 2) {
+        if (state.tokensLeft <= 2) {
+            action = state.tokensLeft;
+        } else if (state.tokensLeft % 2 === 1) {
             action = 2;
         } else {
             action = 1;

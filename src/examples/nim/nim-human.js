@@ -53,13 +53,16 @@ class HumanNimPlayer extends Player {
         // Let the player know which moves were made
         let moveRecord = document.createElement('p');
 
-        if (outcome.playerID.ownAction) {
+        if (outcome.actionPlayerIndex.ownAction) {
             moveRecord.innerText = `You took ${outcome.action} tokens`;
         } else {
             moveRecord.innerText = `Opponent took ${outcome.action} tokens`;
         }
 
         this.moveHistoryDisplay.appendChild(moveRecord);
+
+        // Update the number of tokens left
+        this.tokensDisplay.innerText = outcome.newState.tokensLeft;
 
         // Report if the game is over
         if(outcome.utilities.personal === 1){
@@ -76,5 +79,4 @@ class HumanNimPlayer extends Player {
     reportGameEnd() {
         console.log('Human alerted that game has ended');
     }
-
 }
