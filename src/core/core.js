@@ -20,14 +20,6 @@ class OutcomeField {
         this.personal = personal;
         this.opponents = opponents;
     }
-
-    static personalizeField(field, index) {
-        let fieldCopy = field.slice()
-
-        let personalOutcome = fieldCopy.splice(index, 1)[0];
-
-        return new OutcomeField(personalOutcome, fieldCopy)
-    }
 }
 
 // Lets a player know if a sequential move was their own, or whose it was
@@ -76,57 +68,24 @@ class SimPlayerOutcome extends SimEngineOutcome {
     constructor(validTurn, newState, utilities, actionValidities, actions) {
         super(validTurn, newState, utilities, actionValidities, actions);
     }
-
-    static personalizeOutcome(engineOutcome, index) {
-        let validTurn = engineOutcome.validTurn;        
-        let newState = engineOutcome.newState;
-
-        let actionValidities = OutcomeField.personalizeField(engineOutcome.actionValidities, index);
-        let utilities = OutcomeField.personalizeField(engineOutcome.utilities, index);
-
-        // Only return the actions if they were all valid. This prevents players from
-        // strategically making invalid moves to study opponent behavoiral patterns
-        let actions = validTurn ? OutcomeField.personalizeField(engineOutcome.actions, index) 
-            : undefined;
-
-        return new SimPlayerOutcome(validTurn, newState, utilities, actionValidities, actions);
-    }
 }
 
 class SeqEngineOutcome extends Outcome {
-    constructor(validTurn, newState, utilities, validAction, action, playerID) {
+    constructor(validTurn, newState, utilities, action, actionPlayerIndex) {
         super(validTurn, newState, utilities);
-
-        // Universal property: redundant with validTurn, mirrors moveValidities
-        this.validAction = validAction;
 
         // Universal property: the move made by the player whose turn it was
         // NOTE: only returned if validMove and validTurn is true
         this.action = action;
 
         // Customized property: ID of the player that made the move relative to the player
-        this.playerID = playerID;
+        this.actionPlayerIndex = actionPlayerIndex;
     }
 }
 
 class SeqPlayerOutcome extends SeqEngineOutcome {
-    constructor(validTurn, newState, utilities, validAction, action, playerID) {
-        super(validTurn, newState, utilities, validAction, action, playerID);
-    }
-
-    static personalizeOutcome(engineOutcome, index) {
-        let validTurn = engineOutcome.validTurn;
-        let newState = engineOutcome.newState;
-        let validAction = engineOutcome.validAction;
-
-        let utilities = OutcomeField.personalizeField(engineOutcome.utilities, index);
-
-        // Only allow players to see the action if it was valid
-        let action = validTurn ? engineOutcome.action : undefined;
-
-        let playerID = PlayerID.makeID(index, engineOutcome.playerID);
-
-        return new SeqPlayerOutcome(validTurn, newState, utilities, validAction, action, playerID);
+    constructor(validTurn, newState, utilities, action, actionPlayerIndex) {
+        super(validTurn, newState, utilities, action, actionPlayerIndex);
     }
 }
 
@@ -155,6 +114,14 @@ class Moderator {
         this.engine = engine
         this.state = state
     }
+
+    personalizeOutcomeField(field, index) {
+        let fieldCopy = field.slice()
+
+        let personalOutcome = fieldCopy.splice(index, 1)[0];
+
+        return new OutcomeField(personalOutcome, fieldCopy)
+    }
 }
 
 
@@ -173,7 +140,7 @@ class SeqModerator extends Moderator {
         this.state = engineOutcome.newState;
 
         this.players.forEach((player, i) =>
-            player.reportOutcome(SeqPlayerOutcome.personalizeOutcome(engineOutcome, i)));
+            player.reportOutcome(this.personalizeOutcome(engineOutcome, i)));
     }
 
     async runGame() {
@@ -185,6 +152,21 @@ class SeqModerator extends Moderator {
         
         this.players.forEach(player => player.reportGameEnd());
 
+    }
+
+    personalizeOutcome(engineOutcome, index) {
+        let validTurn = engineOutcome.validTurn;
+        let newState = engineOutcome.newState;
+        let validAction = engineOutcome.validAction;
+
+        let utilities = this.personalizeOutcomeField(engineOutcome.utilities, index);
+
+        // Only allow players to see the action if it was valid
+        let action = validTurn ? engineOutcome.action : undefined;
+
+        let playerID = PlayerID.makeID(index, engineOutcome.actionPlayerIndex);
+
+        return new SeqPlayerOutcome(validTurn, newState, utilities, action, playerID);
     }
 }
 
@@ -201,7 +183,7 @@ class SimModerator extends Moderator {
 
 
         this.players.forEach((player, i) => 
-            player.reportOutcome(SimPlayerOutcome.personalizeOutcome(engineOutcome, i))) 
+            player.reportOutcome(this.personalizeOutcome(engineOutcome, i))) 
     }
 
     async runGame() {
@@ -213,6 +195,21 @@ class SimModerator extends Moderator {
 
         this.players.forEach(player => player.reportGameEnd());
     }
+
+   personalizeOutcome(engineOutcome, playerIndex){ 
+        let validTurn = engineOutcome.validTurn;        
+        let newState = engineOutcome.newState;
+
+        let actionValidities = this.personalizeOutcomeField(engineOutcome.actionValidities, playerIndex);
+        let utilities = this.personalizeOutcomeField(engineOutcome.utilities, playerIndex);
+
+        // Only return the actions if they were all valid. This prevents players from
+        // strategically making invalid moves to study opponent behavoiral patterns
+        let actions = validTurn ? this.personalizeOutcomeField(engineOutcome.actions, playerIndex) 
+            : undefined;
+
+        return new SimPlayerOutcome(validTurn, newState, utilities, actionValidities, actions);
+   }
 }
 
 // Base class for object that handles all the game logic for any partcular game
@@ -248,7 +245,7 @@ class SeqEngine extends Engine {
             utilities = nextState.utilities;
         }
 
-        let outcome = new SeqEngineOutcome(validTurn, newState, utilities, validTurn, action, playerID);
+        let outcome = new SeqEngineOutcome(validTurn, newState, utilities, action, playerID);
 
         return outcome;
     }
