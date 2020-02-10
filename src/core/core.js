@@ -1,3 +1,12 @@
+// Returns a promise that takes ms milliseconds to resolve
+// To use it as a wait block do 'await delay(100);'
+// Or, delay(100).then(// Do stuff)
+async function delay(ms) {
+    return new Promise(function(resolve,reject) {
+        setTimeout(resolve, ms);
+    });
+}
+
 // Base class for storing state for all simultaneous games
 class SimState {
     constructor(terminalState = false) {
@@ -5,12 +14,20 @@ class SimState {
     }
 }
 
+// Base class for storing state for sequential games (has a turn property)
 class SeqState extends SimState {
     constructor(terminalState = false, turn = 0) {
         super(terminalState);
         this.turn = turn; // Stores which player should move next
                           // Necessary in games when players can move multiple time in a row
                           // (Like dots and boxes or mancala)             
+    }
+}
+
+// Base class for storing state for RealTimeGame (same as SimStaet)
+class RealTimeState extends SimState {
+    constructor(terminalState = false) {
+        super(terminalState);
     }
 }
 
@@ -23,10 +40,24 @@ class OutcomeField {
 }
 
 // Lets a player know if a sequential move was their own, or whose it was
-class PlayerID {
+class SeqPlayerID {
     constructor(ownAction, playerID) {
         this.ownAction = ownAction;
         this.playerID = playerID;
+    }
+}
+
+// Let's a player know if a real-time move was their own, an opponent, or an engine action
+class RealTimePlayerID extends SeqPlayerID {
+    constructor(ownAction, engineAction, playerID) {
+        this.ownAction = ownAction;
+        this.engineAction = engineAction;
+        this.playerID = playerID;
+    }
+
+    // Creates this object given a seqPlayerID object, since they are so similar
+    static fromSeqPlayerID(seqPlayerID, engineAction) {
+        return new RealTimePlayerID(seqPlayerID.ownAction, engineAction, seqPlayerID.playerID);
     }
 }
 
@@ -59,7 +90,7 @@ class SimPlayerOutcome extends SimEngineOutcome {
 }
 
 class SeqEngineOutcome extends Outcome {
-    constructor(validTurn, newState, utilities, action, actionPlayerIndex) {
+    constructor(validTurn, newState, utilities, action, actionPlayerID) {
         super(validTurn, newState, utilities);
 
         // Universal property: the move made by the player whose turn it was
@@ -67,15 +98,19 @@ class SeqEngineOutcome extends Outcome {
         this.action = action;
 
         // Customized property: ID of the player that made the move relative to the player
-        this.actionPlayerIndex = actionPlayerIndex;
+        this.actionPlayerID = actionPlayerID;
     }
 }
 
 class SeqPlayerOutcome extends SeqEngineOutcome {
-    constructor(validTurn, newState, utilities, action, actionPlayerIndex) {
-        super(validTurn, newState, utilities, action, actionPlayerIndex);
+    constructor(validTurn, newState, utilities, action, actionPlayerID) {
+        super(validTurn, newState, utilities, action, actionPlayerID);
     }
 }
+
+// Object that a RealTimeEngine returns
+
+
 
 // Base class that defines the interface for all players - whether human or not
 class Player {
@@ -142,7 +177,7 @@ class Moderator {
             relativeIndex = undefined;
         }
 
-        return new PlayerID(ownAction, relativeIndex);
+        return new SeqPlayerID(ownAction, relativeIndex);
     }
 
     // Modifies the board to hide information or make all boards look the same to all players
@@ -179,7 +214,7 @@ class SeqModerator extends Moderator {
         // Only allow players to see the action if it was valid
         let action = validTurn ? engineOutcome.action : undefined;
 
-        let playerID = this.makeID(index, engineOutcome.actionPlayerIndex);
+        let playerID = this.makeID(index, engineOutcome.actionPlayerID);
 
         return new SeqPlayerOutcome(validTurn, newState, utilities, action, playerID);
     }
@@ -220,6 +255,57 @@ class SimModerator extends Moderator {
    }
 }
 
+//Moderator subclass for realtime games, where time advances the game, and players move whenever
+class RealTimeModerator extends Moderator {
+    // actionFreq is how often actions are evaluated, frameFreq how often engine step is taken
+    // Generally, actionFreqq should be faster than frameFreq (like 10 ms or less)
+    constructor(players, engine, state, actionFreq, frameFreq) {
+        super(players, engine, state);
+
+        this.actionFreq = actionFreq;
+        this.frameFreq = frameFreq;
+
+        players.forEach(player => player.bindModerator(this));
+    }
+   
+    // Works by scanning each player to see if they have set an action
+    // If so, processes that action, then resets the action to undefined (no action)
+    runTurn() {
+        this.players.forEach(player => {
+            if(typeof player.action !== 'undefined') {
+                let engineOutcome = this.engine.determineOutcome(action, this.state);
+
+                this.updateState(engineOutcome);
+                this.reportOutcomes(engineOutcome);
+
+                player.action = undefined;
+            }
+        });
+    }
+
+    runGame() {
+        this.players.forEach(player => player.reportGameStart());
+
+        setTimeout(this.engineStep.bind(this), this.frameFreq);
+
+        while(!this.state.terminalState) {
+            this.runTurn();
+
+            await delay(this.actionFreq);
+        }
+
+        this.players.forEach(player => player.reportGameEnd());
+    }
+
+    engineStep() {
+        let engineOutcome = this.engine.step();
+
+        this.updateState(engineOutcome);
+        this.reportOutcome(engineOutcome);
+
+        setTimeout(this.engineStep.bind(this), this.frameFreq);
+    }
+}
 // Base class for object that handles all the game logic for any partcular game
 class Engine {
     constructor() {}
@@ -297,4 +383,13 @@ class SimEngine extends Engine {
 
         return outcome;
     }
+}
+
+class RealTimeEngine extends SeqEngine {
+    constructor(totalPlayers) {
+        super(totalPlayers);
+    }
+
+    // Function that must be defined by subclasses, advancing the game forward a frame
+    step(state){}
 }

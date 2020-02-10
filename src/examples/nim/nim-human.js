@@ -24,7 +24,7 @@ class HumanNimPlayer extends Player {
             this.tokensDisplay.innerText = state.tokensLeft;
 
             while(typeof this.action === 'undefined') {
-                await delay(100);
+                await delay(10);
             }
 
             resolve(this.action);
@@ -53,7 +53,7 @@ class HumanNimPlayer extends Player {
         // Let the player know which moves were made
         let moveRecord = document.createElement('p');
 
-        if (outcome.actionPlayerIndex.ownAction) {
+        if (outcome.actionPlayerID.ownAction) {
             moveRecord.innerText = `You took ${outcome.action} tokens`;
         } else {
             moveRecord.innerText = `Opponent took ${outcome.action} tokens`;
