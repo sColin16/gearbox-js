@@ -28,20 +28,8 @@ class PlayerID {
         this.ownAction = ownAction;
         this.playerID = playerID;
     }
-
-    // Index of the index of the player to make it for, playerID is who took the action
-    static makeID(index, playerID) {
-        let ownAction = index == playerID ? true : false;
-
-        if (!ownAction && index < playerID) {
-            playerID -= 1;
-        } else if(ownAction) {
-            playerID = undefined;
-        }
-
-        return new PlayerID(ownAction, playerID);
-    }
 }
+
 // Base class for the information provided to players after a turn
 class Outcome {
     constructor(validTurn, newState, utilities) {
@@ -115,30 +103,11 @@ class Moderator {
         this.state = state
     }
 
-    personalizeOutcomeField(field, index) {
-        let fieldCopy = field.slice()
-
-        let personalOutcome = fieldCopy.splice(index, 1)[0];
-
-        return new OutcomeField(personalOutcome, fieldCopy)
-    }
-}
-
-
-// Moderator subclass for seqeuntial games, where turns take place one after the other
-// TODO: move the runGame method into the moderator class?
-// May also be able to combine other parts of runTurn
-class SeqModerator extends Moderator {
-    constructor(players, engine, state) {
-        super(players, engine, state)
-    }
-
-    async runTurn() {
-        let action = await this.players[this.state.turn].getAction(this.state);
-
-        let engineOutcome = this.engine.determineOutcome(action, this.state, this.state.turn);
+    updateState(engineOutcome) {
         this.state = engineOutcome.newState;
+    }
 
+    reportOutcomes(engineOutcome) {
         this.players.forEach((player, i) =>
             player.reportOutcome(this.personalizeOutcome(engineOutcome, i)));
     }
@@ -154,17 +123,63 @@ class SeqModerator extends Moderator {
 
     }
 
+    personalizeOutcomeField(field, index) {
+        let fieldCopy = field.slice()
+
+        let personalOutcome = fieldCopy.splice(index, 1)[0];
+
+        return new OutcomeField(personalOutcome, fieldCopy)
+    }
+
+    // Index of the index of the player to make it for, playerID is who took the action
+    makeID(forPlayerIndex, actionPlayerIndex) {
+        let ownAction = forPlayerIndex == actionPlayerIndex ? true : false;
+        let relativeIndex = actionPlayerIndex;
+
+        if (!ownAction && forPlayerIndex < actionPlayerIndex) {
+            relativeIndex -= 1;
+        } else if(ownAction) {
+            relativeIndex = undefined;
+        }
+
+        return new PlayerID(ownAction, relativeIndex);
+    }
+
+    // Modifies the board to hide information or make all boards look the same to all players
+    // Defaults to no transformation
+    transformState(state) {
+        return state;
+    }
+}
+
+
+// Moderator subclass for seqeuntial games, where turns take place one after the other
+class SeqModerator extends Moderator {
+    constructor(players, engine, state) {
+        super(players, engine, state)
+    }
+
+    async runTurn() {
+        let action = await this.players[this.state.turn].getAction(this.state);
+
+        let engineOutcome = this.engine.determineOutcome(action, this.state, this.state.turn);
+        
+        this.updateState(engineOutcome);
+        this.reportOutcomes(engineOutcome);
+    }
+
     personalizeOutcome(engineOutcome, index) {
         let validTurn = engineOutcome.validTurn;
-        let newState = engineOutcome.newState;
         let validAction = engineOutcome.validAction;
+
+        let newState = this.transformState(engineOutcome.newState);
 
         let utilities = this.personalizeOutcomeField(engineOutcome.utilities, index);
 
         // Only allow players to see the action if it was valid
         let action = validTurn ? engineOutcome.action : undefined;
 
-        let playerID = PlayerID.makeID(index, engineOutcome.actionPlayerIndex);
+        let playerID = this.makeID(index, engineOutcome.actionPlayerIndex);
 
         return new SeqPlayerOutcome(validTurn, newState, utilities, action, playerID);
     }
@@ -177,36 +192,29 @@ class SimModerator extends Moderator {
     }
 
     async runTurn() {
-        let actions = await Promise.all(this.players.map(player => player.getAction(this.state)));    
+        let actions = await Promise.all(
+            this.players.map(player => player.getAction(this.state)));    
+
         let engineOutcome = this.engine.determineOutcome(actions, this.state);
-        this.state = engineOutcome.newState;
 
-
-        this.players.forEach((player, i) => 
-            player.reportOutcome(this.personalizeOutcome(engineOutcome, i))) 
+        this.updateState(engineOutcome);
+        this.reportOutcomes(engineOutcome);
     }
 
-    async runGame() {
-        this.players.forEach(player => player.reportGameStart());
-
-        while(!this.state.terminalState) {
-            await this.runTurn()
-        }
-
-        this.players.forEach(player => player.reportGameEnd());
-    }
-
-   personalizeOutcome(engineOutcome, playerIndex){ 
+    personalizeOutcome(engineOutcome, playerIndex){ 
         let validTurn = engineOutcome.validTurn;        
-        let newState = engineOutcome.newState;
 
-        let actionValidities = this.personalizeOutcomeField(engineOutcome.actionValidities, playerIndex);
+        let newState = this.transformState(engineOutcome.newState);
+
+        let actionValidities = this.personalizeOutcomeField(
+            engineOutcome.actionValidities, playerIndex);
+
         let utilities = this.personalizeOutcomeField(engineOutcome.utilities, playerIndex);
 
         // Only return the actions if they were all valid. This prevents players from
         // strategically making invalid moves to study opponent behavoiral patterns
-        let actions = validTurn ? this.personalizeOutcomeField(engineOutcome.actions, playerIndex) 
-            : undefined;
+        let actions = validTurn ? this.personalizeOutcomeField(
+            engineOutcome.actions, playerIndex) : undefined;
 
         return new SimPlayerOutcome(validTurn, newState, utilities, actionValidities, actions);
    }
