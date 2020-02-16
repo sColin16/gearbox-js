@@ -2,8 +2,6 @@ class HumanNimPlayer extends Player {
     constructor() {
         super();
 
-        this.action = undefined;
-
         this.oneButton = document.getElementById('one-btn');
         this.twoButton = document.getElementById('two-btn');
 
@@ -11,37 +9,43 @@ class HumanNimPlayer extends Player {
         this.outcomeDisplay = document.getElementById('outcome-display');
         this.moveHistoryDisplay = document.getElementById('move-history-display');
 
-        this.oneButton.addEventListener('click', () => this.action = 1);
-        this.twoButton.addEventListener('click', () => this.action = 2);
+        this.oneButton.addEventListener('click', () => this.submitMove(1));
+        this.twoButton.addEventListener('click', () => this.submitMove(2));
+    }
+
+    startTurnActions(state) {
+        this.oneButton.disabled = false;
+        this.twoButton.disabled = false;
+        console.log('Turn is starting with ' + state.tokensLeft + ' tokens')
+        this.tokensDisplay.innerText = state.tokensLeft;
+    }
+
+    endTurnActions() {
+        this.oneButton.disabled = true;
+        this.twoButton.disabled = true;
+        console.log('Could update and say something like waiting for other players now...')
     }
 
     async getAction(state) {
-        console.log(state);
+        this.startTurnActions(state);
 
-        return new Promise(async (resolve, reject) => {
-            this.action = undefined;
-
-            this.tokensDisplay.innerText = state.tokensLeft;
-
-            while(typeof this.action === 'undefined') {
-                await delay(10);
-            }
-
-            resolve(this.action);
-
+        return new Promise((resolve, reject) => {
+            this.submitMove = (action) => {
+                this.endTurnActions();
+                resolve(action);
+                this.submitMove=()=>{};
+            };
         });
     }
-    
-    reportGameState() {
+
+    reportGameStart() {
         console.log('Human alerted that the game has started');
     }
 
     reportOutcome(outcome) {
-        console.log(outcome);
-
         // Report if the action was invalid, return early
         if(!outcome.validTurn) {
-            if(outcome.playerID.ownAction) {
+            if(outcome.actionPlayerID.ownAction) {
                 this.outcomeDisplay.innerText = 'You made an invalid move';
             } else {
                 this.outcomeDisplay.innerText = 'Your opponent made an invalid move';

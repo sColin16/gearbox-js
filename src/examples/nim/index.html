@@ -8,7 +8,7 @@
         <script type='text/javascript' src='/src/examples/nim/nim-comp.js'></script>
         <script type='text/javascript'>
             window.onload = function() {
-                mod = new NimGameModerator(new HumanNimPlayer(), new ComputerNimPlayer(), 17);
+                mod = new NimGameModerator(new ComputerNimPlayer(), new HumanNimPlayer(), 17);
 
                 mod.runGame();
             }
@@ -21,8 +21,8 @@
 
         <h2>How many tokens do you want to take?</h2>
 
-        <button id='one-btn'>One</button>
-        <button id='two-btn'>Two</button>
+        <button disabled id='one-btn'>One</button>
+        <button disabled id='two-btn'>Two</button>
 
         <p id='outcome-display'></p>
 

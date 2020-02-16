@@ -5,9 +5,9 @@ class ComputerNimPlayer extends Player {
         super();
     }
     
-    getAction(state) {
+    async getAction(state) {
         console.log('Computer is gettin an action');
-
+        await delay(2000);
         let action;
         if (state.tokensLeft <= 2) {
             action = state.tokensLeft;
