@@ -1,4 +1,28 @@
+// Simple wrapper class to an array to make it act like a queue
+class Queue {
+    constructor() {
+        this.items = [];
+    }
+
+    enqueue(item) {
+        this.items.push(item);
+    }
+
+    dequeue() {
+        return this.items.shift();
+    }
+
+    size() {
+        return this.items.length;
+    }
+
+    empty() {
+        return this.items.length == 0;
+    }
+}
+
 // Returns a promise that takes ms milliseconds to resolve
+// Keep this function for now just to test a network player with lag
 // To use it as a wait block do 'await delay(100);'
 // Or, delay(100).then(// Do stuff)
 async function delay(ms) {
@@ -27,8 +51,10 @@ class SeqState extends SimState {
 
 // Base class for storing state for RealTimeGame (same as SimState)
 class RealTimeState extends SimState {
-    constructor(terminalState = false) {
+    constructor(stepFreq, terminalState = false) {
         super(terminalState);
+
+        this.stepFreq = stepFreq;
     }
 }
 
@@ -47,21 +73,6 @@ class SeqPlayerID {
         this.ownAction = ownAction; // If the action is made by the player or not
         this.playerID = playerID;   // Index of the player who made the move if not self
                                     // (undefined if ownAction is true)
-    }
-}
-
-// Let's a player know if a real-time move was their own, an opponent, or an engine action
-class RealTimePlayerID extends SeqPlayerID {
-    constructor(ownAction, engineAction, playerID) {
-        super(ownAction, playerID);
-
-        this.engineAction = engineAction; // If the action was a step by the engine
-                                          // (Other fields undefined if true)
-    }
-
-    // Creates this object given a seqPlayerID object, since they are so similar
-    static fromSeqPlayerID(seqPlayerID, engineAction) {
-        return new RealTimePlayerID(seqPlayerID.ownAction, engineAction, seqPlayerID.playerID);
     }
 }
 
@@ -112,8 +123,17 @@ class SeqEngineOutcome extends Outcome {
 class SeqPlayerOutcome extends SeqEngineOutcome {}
 
 // Outcome object returned by a Real-Time Game Engine
-// Identical to SeqEngineOutcome, separate class for clarity
-class RealTimeEngineOutcome extends SeqEngineOutcome {}
+// Identical to SeqEngineOutcome, engineStep is true if outcome was a step, not a player action 
+class RealTimeEngineOutcome extends SeqEngineOutcome {
+    constructor(validTurn, newState, utilities, action, actionPlayerID, engineStep) {
+        super(validTurn, newState, utilities, action, actionPlayerID);
+
+        this.engineStep = engineStep;
+    }
+}
+
+// Outcome object provided to players
+class RealTimePlayerOutcome extends RealTimeEngineOutcome {}
 
 // Base class that defines the interface for all players - whether human or not
 class Player {
@@ -123,6 +143,7 @@ class Player {
     // The player may be state-full even if the game is stateless, tracking opponent moves
     getAction(state) {}
 
+    // TODO: pass the starting state into this function
     // Called whenever a moderator starts a new game
     reportGameStart() {}
 
@@ -132,6 +153,22 @@ class Player {
     // Called whenever a moderator ends a game
     reportGameEnd() {}
 }
+
+// Class that all RealTimePlayers should be based off of
+// Abstracts away some implementation details of the moderator
+class RealTimePlayer {
+    constructor() {
+    }
+
+    bindModerator(moderator) {
+        this.moderator = moderator;
+    }
+
+    takeAction(action) {
+        this.moderator.handleAction(action, this);
+    }
+}
+
 
 // Base class for object that handle interactions between players and the engine
 class Moderator {
@@ -176,24 +213,19 @@ class Moderator {
         return new OutcomeField(personalOutcome, arrayCopy)
     }
 
-    // TODO: move this to the Sequential game engine
     // Creates a SeqPlayerID object for the player at forPlayerIndex, given that the player
     // at actionPlayerIndex took the action
-    makeSeqPlayerID(forPlayerIndex, actionPlayerIndex) {
+    makePlayerID(forPlayerIndex, actionPlayerIndex) {
         // Determine if the player made the move themselves
         let ownAction = forPlayerIndex == actionPlayerIndex ? true : false;
 
-        // Assume the index relative to the player is the absolute index
-        let relativeIndex = actionPlayerIndex;
+        // By default, realtiveIndex is undefined (set below if not own action)
+        let relativeIndex;
 
-        // If the action wasn't the player's and this player's absolute index is less than
-        // the absolute index of the player who made the move, the relative index is one
-        // less than the absolute index
         if (!ownAction && forPlayerIndex < actionPlayerIndex) {
-            relativeIndex -= 1;
-
-        } else if(ownAction) { // If the player made the move, this field should be undefined
-            relativeIndex = undefined;
+            relativeIndex = actionPlayerIndex - 1;
+        } else if(!ownAction && forPlayerIndex > actionPlayerIndex) {
+            relativeIndex = actionPlayerIndex;
         }
 
         return new SeqPlayerID(ownAction, relativeIndex);
@@ -228,7 +260,7 @@ class SeqModerator extends Moderator {
     }
 
     // Transforms a SeqEngineOutcome to a SeqPlayerOutcome 
-    personalizeOutcome(engineOutcome, index) {
+    personalizeOutcome(engineOutcome, playerIndex) {
         // The valdity of the action and action can be provided directly to the players
         let validTurn = engineOutcome.validTurn;
         let action = engineOutcome.action;
@@ -237,17 +269,17 @@ class SeqModerator extends Moderator {
         let newState = this.transformState(engineOutcome.newState);
 
         // Return utilities as an OutcomeField so players differentiate between their/opponents
-        let utilities = this.makeOutcomeField(engineOutcome.utilities, index);
+        let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
 
         // Determine the ID of the player who made the move (could have been self)
-        let playerID = this.makeID(index, engineOutcome.actionPlayerID);
+        let playerID = this.makePlayerID(playerIndex, engineOutcome.actionPlayerID);
 
         return new SeqPlayerOutcome(validTurn, newState, utilities, action, playerID);
     }
 }
 
 // Moderator subcalss for simultaneous games, where all players make a move at once
-class SimModerator extends Moderator {
+class SimModerator extends SeqModerator {
     // Runs a single turn for a Simultaneous game
     async runTurn() {
         // Get the actions for all players (await all of the players to return an action)
@@ -285,55 +317,107 @@ class SimModerator extends Moderator {
    }
 }
 
-//Moderator subclass for realtime games, where time advances the game, and players move whenever
+// Moderator subclass for realtime games, where time advances the game, and players move whenever
 class RealTimeModerator extends Moderator {
-    // actionFreq is how often actions are evaluated, frameFreq how often engine step is taken
-    // Generally, actionFreqq should be faster than frameFreq (like 10 ms or less)
-    constructor(players, engine, state, actionFreq, frameFreq) {
+    constructor(players, engine, state) {
         super(players, engine, state);
 
-        this.actionFreq = actionFreq;
-        this.frameFreq = frameFreq;
-    }
-   
-    // Works by scanning each player to see if they have set an action
-    // If so, processes that action, then resets the action to undefined (no action)
-    runTurn() {
-        this.players.forEach(player => {
-            if(typeof player.action !== 'undefined') {
-                let engineOutcome = this.engine.determineOutcome(player.action, this.state);
+        // Stores all the actions that need to be processed coming up
+        this.actionQueue = new Queue();
 
-                this.updateState(engineOutcome);
-                this.reportOutcomes(engineOutcome);
-
-                player.action = undefined;
-            }
-        });
+        // Bind this moderator to each playe, so it knows where to submit its move
+        this.players.forEach(player => player.bindModerator(this));
     }
 
     async runGame() {
+        // Let each player know the game has begun
         this.players.forEach(player => player.reportGameStart());
 
-        setTimeout(this.engineStep.bind(this), this.frameFreq);
+        // Schedule the first engine step
+        setTimeout(this.engineStep.bind(this), this.state.stepFreq);
+        
+        // Now that every player has been alerted, start handling moves
+        this.processActionQueue();
+    }
 
-        while(!this.state.terminalState) {
-            this.runTurn();
+    // Process a single action in the queue, then schedule processing the next
+    processActionQueue() {
+        // Only process as many actions are currently in the queue, otherwise computer players
+        // will be able to submit unlimited moves while keeping the even queue blocked
+        let actionsProcessed = 0;
+        let actionsToProcess = this.actionQueue.size();
 
-            await delay(this.actionFreq);
+        // Continue to process actions so long as the state is not terminal, there are actions
+        // to process, and the number of actions doesn't exceed the number to process
+        while (!this.state.terminalState && actionsProcessed < actionsToProcess) {
+
+            // Pull the next action out of the queue
+            let nextAction = this.actionQueue.dequeue();
+
+            // Determine the index of the player who made the move
+            let playerIndex = this.players.indexOf(nextAction.playerRef);
+
+            // Process the in the engine
+            let engineOutcome = this.engine.determineOutcome(nextAction.action, 
+                this.state, playerIndex);
+
+            // Then update the stored game state, let all players know the outcome
+            this.updateState(engineOutcome);
+            this.reportOutcomes(engineOutcome);
+
+            actionsProcessed++;
         }
 
-        this.players.forEach(player => player.reportGameEnd());
+        // Now that we're done processing, free the event loop, and schedule the next batch
+        // Only schedule the next batch if a terminal state was not reached
+        if (!this.state.terminalState) {
+            setTimeout(this.processActionQueue.bind(this), 0);
+        }
     }
 
     engineStep() {
-        let engineOutcome = this.engine.step();
+        // Make sure the game didn't enter a terminal state, likely in an action since a frame 
+        // was processed
+        if (!this.state.terminalState) {
+            // Let the engine process the next step
+            let engineOutcome = this.engine.step(this.state);
 
-        this.updateState(engineOutcome);
-        this.reportOutcome(engineOutcome);
+            // Update the stored game state and step rate
+            this.updateState(engineOutcome);
+            this.reportOutcomes(engineOutcome);
 
-        setTimeout(this.engineStep.bind(this), this.frameFreq);
+            // Schedule the next step
+            setTimeout(this.engineStep.bind(this), this.state.stepFreq);
+        }
+    }
+
+    // Endpoint that RealTimePlayers should call to make a move
+    handleAction(action, playerRef) {
+        // Add the action to the queue
+        this.actionQueue.enqueue({'action': action, 'playerRef': playerRef});
+    }
+
+    // Converts a RealTimeEngineOutcome to a RealTimePlayerOutcome
+    // Uses the SeqModerator function sincethe objects are identical
+    personalizeOutcome(engineOutcome, playerIndex) {
+        let validTurn = engineOutcome.validTurn;
+        let engineStep = engineOutcome.engineStep;
+        let action = engineOutcome.action;
+
+        // The new state should be transformed by the moderator as necessary
+        let newState = this.transformState(engineOutcome.newState);
+
+        // Return utilities as an OutcomeField so players differentiate between their/opponents
+        let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
+       
+        let playerID = engineStep ? undefined:
+            this.makePlayerID(playerIndex, engineOutcome.actionPlayerID);
+
+        return new RealTimePlayerOutcome(validTurn, newState, utilities, action, playerID,
+            engineStep);
     }
 }
+
 // Base class for object that handles all the game logic for any partcular game
 class Engine {
     constructor() {}
@@ -394,28 +478,54 @@ class SimEngine extends Engine {
             }
         });
 
-        let newState;
-        let utilities;
+        let newState = state;
+        let utilities = utilities = new Array(actions.length).fill(0);
 
         if (validTurn) {
             let nextState = this.getNextState(actions, state)
 
             newState = nextState.newState;
             utilities = nextState.utilities;
-        } else {
-            newState = state; // Leave the state unchanged (?)
-            utilities = new Array(actions.length).fill(0);
-        }
+        } 
 
-        let outcome = new SimEngineOutcome(validTurn, newState, utilities, actionValidities, actions);
+        let outcome = new SimEngineOutcome(validTurn, newState, utilities, actionValidities, 
+            actions);
 
         return outcome;
     }
 }
 
+// The RealTimeEngine is identical to the SeqEngine, just with an additional step function
+// which is run after a certain time interval to progress the game forward
 class RealTimeEngine extends SeqEngine {
     constructor(totalPlayers) {
         super(totalPlayers);
+    }
+
+    determineOutcome(action, state, playerID) {
+        let validTurn = this.verifyValid(action, state, playerID);
+
+        let newState = state; // Leave the state unchanged by default
+        let utilities = new Array(this.totalPlayers).fill(0); // Have 0 utility be default too 
+
+        // Set newState and utilities if the action was valid
+        if(validTurn) {
+            let nextState = this.getNextState(action, state, playerID);
+
+            newState = nextState.newState;
+            utilities = nextState.utilities;
+        }
+
+        let outcome = new RealTimeEngineOutcome(validTurn, newState, utilities, action, playerID,
+            false);
+
+        return outcome;
+    }
+
+    reportStepOutcome(action, newState, utilities) {
+        return new RealTimeEngineOutcome(true, newState,
+            utilities, action, undefined, true); 
+
     }
 
     // Function that must be defined by subclasses, advancing the game forward a frame

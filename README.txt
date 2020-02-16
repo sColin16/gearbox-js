@@ -15,19 +15,36 @@ The players are the agents. They take a state as an input, and provide an action
 More complex behavoir can be programmed into them, but the moderator assumes that every
 player is a stateless entity.
 
-Currently, both simultaneous and sequential gameplay is supported by the API. Two examples,
-Rock, Paper, Scissors, and Nim (really the subtraction game) are provided. There are a series
-of improvement that will be made to the API over time. Here are a few on the roadmap:
+Currently, simultaneous, sequential, and real-time gameplay is supported by the API. Three
+examples, Rock, Paper, Scissors, Nim (really the subtraction game), and a counting game are 
+provided. There are a series of improvement that will be made to the API over time. Here are a 
+few on the roadmap:
 
-1. RealTimeEngine, for simulating games (such as video games) that will advance even if players
-   don't take any actions. This would be useful for simulating a game like Tetris, for example
-    - Snake will likely be created as an example
-2. NetworkPlayer class, will allow the API to request moves from other servers. This will be 
+1. Action Filtering: provide a method for Seq and RealTime moderator subclasses to not report
+   all outcomes to all players, based on the action, state, and playerIndex
+2. AsyncPlayer class, a parent class for Human and Network player classes, that provides
+   abstractions to make it easier to for these player to integrate with Seq and Sim Moderators.
+   Specifically, the class will have a complete getAction method that returns a promise, and
+   will allow players to call a takeAction method, that can be attached to user interfaces
+   (e.g. to attach to eventListeners) or be called when a network request returns 
+3. NetworkPlayer class, will allow the API to request moves from other servers. This will be 
    especially useful for interfacing with intelligent players written in other languages, or
    to simulate multiplayer games more effectively.
-3. gearbox-py will be a new library that will implement the same protocols as gearbox-js.
+4. gearbox-py will be a new library that will implement the same protocols as gearbox-js.
    To support the use of the NetworkPlayer on the frontend, this library will also include
    network classes, except they will be more server-based (whereas the js are more client-based)
+
+Here are some games/improvements that are planned to be implemented:
+    - Rock,Paper,Scissors graphics improvments
+    - Make Nim actually Nim, allow a choice for how many piles and tokens to start with
+    - Tic-Tac-Toe game
+    - Connect 4 game
+    - Buying/Selling Game?
+    - Centipede Game
+    - Mancala
+    - Dots and Boxes
+    - Snake
+    - Tetris
 
 Website to use to get js files
 https://www.jsdelivr.com/features
