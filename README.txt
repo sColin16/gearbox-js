@@ -22,15 +22,10 @@ few on the roadmap:
 
 1. Action Filtering: provide a method for Seq and RealTime moderator subclasses to not report
    all outcomes to all players, based on the action, state, and playerIndex
-2. AsyncPlayer class, a parent class for Human and Network player classes, that provides
-   abstractions to make it easier to for these player to integrate with Seq and Sim Moderators.
-   Specifically, the class will have a complete getAction method that returns a promise, and
-   will allow players to call a takeAction method, that can be attached to user interfaces
-   (e.g. to attach to eventListeners) or be called when a network request returns 
-3. NetworkPlayer class, will allow the API to request moves from other servers. This will be 
+2. NetworkPlayer class, will allow the API to request moves from other servers. This will be 
    especially useful for interfacing with intelligent players written in other languages, or
    to simulate multiplayer games more effectively.
-4. gearbox-py will be a new library that will implement the same protocols as gearbox-js.
+3. gearbox-py will be a new library that will implement the same protocols as gearbox-js.
    To support the use of the NetworkPlayer on the frontend, this library will also include
    network classes, except they will be more server-based (whereas the js are more client-based)
 

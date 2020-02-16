@@ -1,5 +1,5 @@
 // This class must be coupled to elements on the webpage
-class HumanRPSPlayer extends Player {
+class HumanRPSPlayer extends AsyncPlayer {
     constructor() {
         super();
         this.action = undefined;  // Flag set to indicate that a move has been made
@@ -12,24 +12,9 @@ class HumanRPSPlayer extends Player {
         this.p2ActionDisplay = document.getElementById('p2-action-display');
         this.outcomeDisplay = document.getElementById('outcome-display');
 
-        this.rockButton.addEventListener('click', () => this.action='R');
-        this.paperButton.addEventListener('click', () => this.action='P');
-        this.scissorsButton.addEventListener('click', () => this.action='S');
-    }
-
-    async getAction(state) {
-        return new Promise(async (resolve, reject) => {
-            // Reset the flag for the action taken
-            this.action = undefined; 
-
-            // Wait for the user to trigger an action
-            while(typeof this.action === 'undefined') {
-                await delay(100);            
-            }
-
-            // Return that value once an action has been triggered
-            resolve(this.action);
-        });
+        this.rockButton.addEventListener('click', () => this.takeAction('R'));
+        this.paperButton.addEventListener('click', () => this.takeAction('P'));
+        this.scissorsButton.addEventListener('click', () => this.takeAction('S'));
     }
 
     reportGameStart() {

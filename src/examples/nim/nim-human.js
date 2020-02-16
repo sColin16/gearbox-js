@@ -1,4 +1,4 @@
-class HumanNimPlayer extends Player {
+class HumanNimPlayer extends AsyncPlayer {
     constructor() {
         super();
 
@@ -9,14 +9,13 @@ class HumanNimPlayer extends Player {
         this.outcomeDisplay = document.getElementById('outcome-display');
         this.moveHistoryDisplay = document.getElementById('move-history-display');
 
-        this.oneButton.addEventListener('click', () => this.submitMove(1));
-        this.twoButton.addEventListener('click', () => this.submitMove(2));
+        this.oneButton.addEventListener('click', () => this.takeAction(1));
+        this.twoButton.addEventListener('click', () => this.takeAction(2));
     }
 
     startTurnActions(state) {
         this.oneButton.disabled = false;
         this.twoButton.disabled = false;
-        console.log('Turn is starting with ' + state.tokensLeft + ' tokens')
         this.tokensDisplay.innerText = state.tokensLeft;
     }
 
@@ -24,18 +23,6 @@ class HumanNimPlayer extends Player {
         this.oneButton.disabled = true;
         this.twoButton.disabled = true;
         console.log('Could update and say something like waiting for other players now...')
-    }
-
-    async getAction(state) {
-        this.startTurnActions(state);
-
-        return new Promise((resolve, reject) => {
-            this.submitMove = (action) => {
-                this.endTurnActions();
-                resolve(action);
-                this.submitMove=()=>{};
-            };
-        });
     }
 
     reportGameStart() {

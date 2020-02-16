@@ -169,6 +169,30 @@ class RealTimePlayer {
     }
 }
 
+// Parent class for HumanPlayers and NetworkPlayers, which provides an easy interface for players
+// who don't make moves synchronously to interface with the synchronous moderators (Seq/Sim)
+class AsyncPlayer extends Player {
+    async getAction(state) {
+        this.startTurnActions(state);
+
+        return new Promise((resolve, reject) => {
+            this.takeAction = (action) => {
+                this.endTurnActions();
+
+                resolve(action);
+
+                this.takeAction = ()=>{};
+            }
+        });
+    }
+
+    // Function that subclasses can define to do things (e.g. update UI, make ajax request)
+    // When the turn begins
+    startTurnActions(state) {}
+
+    // Function that subclasses can define to do things at the end of a turn
+    endTurnActions() {}
+}
 
 // Base class for object that handle interactions between players and the engine
 class Moderator {
@@ -479,7 +503,7 @@ class SimEngine extends Engine {
         });
 
         let newState = state;
-        let utilities = utilities = new Array(actions.length).fill(0);
+        let utilities = new Array(actions.length).fill(0);
 
         if (validTurn) {
             let nextState = this.getNextState(actions, state)
