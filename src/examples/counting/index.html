@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <script type='text/javascript' src='/src/core/core.js'></script>
+        <script type='text/javascript' src='/src/games/counting/counting-core.js'></script>
+        <script type='text/javascript' src='/src/examples/counting/counting-human.js'></script>
+        <script type='text/javascript' src='/src/examples/counting/counting-comp.js'></script>
+        <script type='text/javascript'>
+            window.onload = function() {
+                mod = new CountingGameModerator(new HumanCountingPlayer(), new ComputerCountingPlayer());
+
+                mod.runGame();
+            }
+
+        </script>
+    </head>
+
+    <body>
+        <h2>Count</h2>
+        <p id='count-display'></p>
+
+        <h2>Choose move:</h2>
+        <button id='plus-btn'>+1</button>
+        <button id='sub-btn'>-1</button>
+
+        <p id='outcome-display'></p>
+    </body>
+</html>
