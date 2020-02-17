@@ -1,7 +1,13 @@
 // Simple wrapper class to an array to make it act like a queue
 class Queue {
-    constructor() {
-        this.items = [];
+    constructor(items = []) {
+        this.items = items;
+    }
+
+    copy() {
+        let itemsCopy = this.items.slice();
+
+        return new Queue(itemsCopy);
     }
 
     enqueue(item) {
@@ -143,9 +149,8 @@ class Player {
     // The player may be state-full even if the game is stateless, tracking opponent moves
     getAction(state) {}
 
-    // TODO: pass the starting state into this function
     // Called whenever a moderator starts a new game
-    reportGameStart() {}
+    reportGameStart(state) {}
 
     // Provides the player with information about the result of a turn, including utilities
     reportOutcome(outcome) {}
@@ -215,7 +220,7 @@ class Moderator {
 
     // Continually runs turns until the state reached it terminal
     async runGame() {
-        this.players.forEach(player => player.reportGameStart());
+        this.players.forEach(player => player.reportGameStart(this.state));
 
          while(!this.state.terminalState) {
             await this.runTurn();
@@ -355,7 +360,7 @@ class RealTimeModerator extends Moderator {
 
     async runGame() {
         // Let each player know the game has begun
-        this.players.forEach(player => player.reportGameStart());
+        this.players.forEach(player => player.reportGameStart(this.state));
 
         // Schedule the first engine step
         setTimeout(this.engineStep.bind(this), this.state.stepFreq);
@@ -396,6 +401,8 @@ class RealTimeModerator extends Moderator {
         // Only schedule the next batch if a terminal state was not reached
         if (!this.state.terminalState) {
             setTimeout(this.processActionQueue.bind(this), 0);
+        } else {
+            this.players.forEach(player => player.reportGameEnd());
         }
     }
 
@@ -410,8 +417,12 @@ class RealTimeModerator extends Moderator {
             this.updateState(engineOutcome);
             this.reportOutcomes(engineOutcome);
 
-            // Schedule the next step
-            setTimeout(this.engineStep.bind(this), this.state.stepFreq);
+            if (!this.state.terminalState) {
+                // Schedule the next step
+                setTimeout(this.engineStep.bind(this), this.state.stepFreq);
+            } else {
+                this.players.forEach(player => player.reportGameEnd());
+            }
         }
     }
 
