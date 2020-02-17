@@ -15,10 +15,10 @@ The players are the agents. They take a state as an input, and provide an action
 More complex behavoir can be programmed into them, but the moderator assumes that every
 player is a stateless entity.
 
-Currently, simultaneous, sequential, and real-time gameplay is supported by the API. Three
-examples, Rock, Paper, Scissors, Nim (really the subtraction game), and a counting game are 
-provided. There are a series of improvement that will be made to the API over time. Here are a 
-few on the roadmap:
+Currently, simultaneous, sequential, and real-time gameplay is supported by the API. Four
+examples, Rock, Paper, Scissors, Nim (really the subtraction game), a counting game, and snake
+are provided. There are a series of improvement that will be made to the API over time. Here are
+a few on the roadmap:
 
 1. Action Filtering: provide a method for Seq and RealTime moderator subclasses to not report
    all outcomes to all players, based on the action, state, and playerIndex
@@ -38,7 +38,6 @@ Here are some games/improvements that are planned to be implemented:
     - Centipede Game
     - Mancala
     - Dots and Boxes
-    - Snake
     - Tetris
 
 Website to use to get js files

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/p5@0.10.2/lib/p5.js"></script>
+        <script type="text/javascript">
+            new p5(); // On-demand global mode to use color() outside of setup
+        </script>
+        <script type='text/javascript' src='/src/core/core.js'></script>
+        <script type='text/javascript' src='/src/games/snake/snake-core.js'></script>
+        <script type='text/javascript' src='/src/examples/snake/snake-human.js'></script>
+        <script type='text/javascript'>
+            window.onload = function() {
+                mod = new SnakeGameModerator(new HumanSnakePlayer(600), 100, 20, 1);
+
+                mod.runGame();
+            }
+        </script>
+    </head>
+
+    <body>
+        <div id='canvas-container'></div>
+        <p id='score-display'></p>
+    </body>
+</html>
+
