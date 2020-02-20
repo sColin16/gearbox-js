@@ -1,9 +1,10 @@
-// This class must be coupled to elements on the webpage
+// Class that implements the gearbox API to let a human play Rock, Paper, Scissors in the browser
+// Note that this class must be coupled to elements on the webpage
 class HumanRPSPlayer extends AsyncPlayer {
     constructor() {
         super();
-        this.action = undefined;  // Flag set to indicate that a move has been made
 
+        // Bind all the action buttons and display elements on the webpage
         this.rockButton = document.getElementById('rock-btn');
         this.paperButton = document.getElementById('paper-btn');
         this.scissorsButton = document.getElementById('scissors-btn');
@@ -12,18 +13,23 @@ class HumanRPSPlayer extends AsyncPlayer {
         this.p2ActionDisplay = document.getElementById('p2-action-display');
         this.outcomeDisplay = document.getElementById('outcome-display');
 
+        // Add the event listeners to submit moves
         this.rockButton.addEventListener('click', () => this.takeAction('R'));
         this.paperButton.addEventListener('click', () => this.takeAction('P'));
         this.scissorsButton.addEventListener('click', () => this.takeAction('S'));
     }
 
+    // Dummy function, could be expanded to prepare page elements
     reportGameStart() {
         console.log('Human alerted that game is starting');
     }
 
+    // Primary function to let the human know what just happened
     reportOutcome(outcome) {
+        // Print out the outcome for testing purposes
         console.log(outcome);
 
+        // Handle if the turn was valid or not (which doesn't really happen)
         if (!outcome.validTurn) {
             if(!outcome.actionValidities.personal) {
                 this.outcomeDisplay.innerText = 'You made an invalid move';
@@ -34,9 +40,11 @@ class HumanRPSPlayer extends AsyncPlayer {
             return;
         }
 
+        // Display what move each player made
         this.p1ActionDisplay.innerText = 'You played ' + outcome.actions.personal;
         this.p2ActionDisplay.innerText = 'Opponent played ' + outcome.actions.opponents[0];
 
+        // Report the outcome of that turn
         if(outcome.utilities.personal === 1) {
             this.outcomeDisplay.innerText = 'You win!';
         } else if (outcome.utilities.personal === 0) {
@@ -46,6 +54,7 @@ class HumanRPSPlayer extends AsyncPlayer {
         }
     }
 
+    // Another dummy function where the UI could be updated to alert the human of something
     reportGameEnd() {
         console.log('Human alerted that game has ended');
     }

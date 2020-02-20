@@ -1,15 +1,10 @@
 // A random rock, paper, scissors player
 class ComputerRPSPlayer extends Player {
-    constructor() {
-        super()
-    }
-
     getAction(state) {
-
         console.log('Computer is getting an action');
-        // Just choose a random move
-        let randomIndex = Math.floor(Math.random() * 3)
 
+        // This implementation just chooses a purely random move
+        let randomIndex = Math.floor(Math.random() * 3)
         let move = ['R', 'P', 'S'][randomIndex];
 
         console.log(move);
@@ -17,6 +12,7 @@ class ComputerRPSPlayer extends Player {
         return move;
     }
 
+    // Dummy functions, smarter computers could use these to prepare to track patterns
     reportGameStart() {
         console.log('Computer alerted game is starting');
     }

@@ -1,47 +1,29 @@
-// Returns a promise that takes ms milliseconds to resolve
-// To use it as a wait block do 'await delay(100);'
-// Or, delay(100).then(// Do stuff)
-
-async function delay(ms) {
-    return new Promise(function(resolve,reject) {
-        setTimeout(resolve, ms);
-    });
-}
-
-let defaultState = new SimState();
-
-
-class RPSGameModerator extends SimModerator {
-    constructor(player1, player2) {
-        super([player1, player2], new RPSEngine(), defaultState);
-    }
-}
+// Engine that handles Rock, Paper, Scisssors Logic
 
 class RPSEngine extends SimEngine {
+    // Assign each action a multiple of two so that sums of any two action are unique
     static ROCK     = 1;
     static PAPER    = 2;
     static SCISSORS = 4;
 
+    // Make 'R', 'P', and 'S' valid actions, use the default verifyValid function
     constructor() {
-        super();
-    }
-
-    verifyValid(action, state) {
-        return ['R', 'P', 'S'].includes(action);
+        super(['R', 'P', 'S']);
     }
 
     getNextState(actions, state) {
+        // Determine the number (above) associated with each player's move
         let p1NumAction = 2 ** (['R', 'P', 'S'].indexOf(actions[0]));
         let p2NumAction = 2 ** (['R', 'P', 'S'].indexOf(actions[1]));
 
+        // Determine the unique sum that identifies the two moves made
         let actionSum = p1NumAction + p2NumAction;
 
-        let winningMove;
+        // Set the winning move to 0 to signify a tie (since no move is 0)
+        let winningMove = 0;
 
-        if (p1NumAction == p2NumAction) {
-            winningMove = 0;
-
-        } else if (actionSum === RPSEngine.ROCK + RPSEngine.PAPER ) {
+        // Determine the winning move based on the sum
+        if (actionSum === RPSEngine.ROCK + RPSEngine.PAPER ) {
             winningMove = RPSEngine.PAPER;
 
         } else if (actionSum == RPSEngine.PAPER + RPSEngine.SCISSORS) {
@@ -51,16 +33,24 @@ class RPSEngine extends SimEngine {
             winningMove = RPSEngine.ROCK;
         }
 
-        let utilities;
+        // By default, no utilities for the game
+        let utilities = 0;
 
-        if (winningMove == 0) {
-            utilities = [0, 0];
-        } else if (winningMove == p1NumAction) {
-            utilities = [1, -1];
-        } else {
-            utilities = [-1, 1];
+        // If the result was not a tie (there was a winning move), set the utilities
+        if (winningMove != 0) {
+            let winner = winningMove == p1NumAction ? 0 : 1;
+            
+            utilities = this.getUtilities(winner=winner);
         }
 
-        return {'newState': defaultState, 'utilities': utilities};    
+        // Always return a blank SimState, since RPS is stateless
+        return this.reportOutcome(new SimState(), utilities);
     }
+}
+
+// Helper function to run a game quickly
+function runRPS(player1 = HumanRPSPlayer, player2 = ComputerRPSPlayer) {
+    let mod = new SimModerator(players=[player1, player2], engine=RPSEngine, state=SimState);
+
+    mod.runGame();
 }
