@@ -1,13 +1,11 @@
-// A smart nim computer player
+// A "smart" nim computer player (pretty sure its actually dumb)
 
 class ComputerNimPlayer extends Player {
-    constructor() {
-        super();
-    }
-    
     async getAction(state) {
-        console.log('Computer is gettin an action');
+        // Simulate a delay as if the computer was thinking
         await delay(2000);
+
+        // Attempt to choose a move intelligently (which I think is wrong)
         let action;
         if (state.tokensLeft <= 2) {
             action = state.tokensLeft;
@@ -20,6 +18,7 @@ class ComputerNimPlayer extends Player {
         return action;
     }
 
+    // Dummy functions that could be replaced with more advanced things for advanced players
     reportGameStart() {
         console.log('Computer alerted game is starting');
     }

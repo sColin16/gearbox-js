@@ -1,55 +1,43 @@
-
-async function delay(ms) {
-    return new Promise(function(resolve, reject) {
-        setTimeout(resolve, ms);
-    });
-}
-
+// State to store how maby tokens are left, and engine to handle Nim logic
 class NimState extends SeqState {
-    constructor(terminalState, turn, tokensLeft) {
-        super(terminalState, turn);
+    constructor(numTokens) {
+        super();
 
-        this.tokensLeft = tokensLeft;
-    }
-}
-
-class NimGameModerator extends SeqModerator {
-    constructor(player1, player2, numTokens) {
-        super([player1, player2], new NimEngine(), new NimState(false, 0, numTokens)); 
+        this.numTokens = numTokens;
     }
 }
 
 class NimEngine extends SeqEngine {
-    constructor(validActions = [1, 2], normalPlay = true) {
-        super(2);
-
-        this.validActions = validActions;
-        this.normalPlay = normalPlay; // Not supported yet
+    // Use the default verifyValid function to determine what valid actions are
+    // This assumes you can take more than there are, just sets the total left to 0
+    constructor(validActions=[1, 2]) {
+        super(validActions);
     }
 
-    verifyValid(action, state, playerID) {
-        return this.validActions.includes(action);
-    }
+    getNextState(action, state, playerIndex) {
+        // Lets players take more tokens than there are, resulting in 0 tokens left
+        // This allows all games, no matter what the validActions are, to end eventually
+        state.numTokens = action > state.tokensLeft ? 0 : state.numTokens - action;
 
-    getNextState(action, state, playerID) {
-        let newState = {...state} // Copy the state so we can modify it
+        // 0 utilities unless there are no tokens left
+        let utilities = 0;
 
-        newState.tokensLeft = action > newState.tokensLeft ? 0 : newState.tokensLeft - action;
+        if (state.numTokens === 0){
+            state.terminalState = true;
 
-        let utilities = [0, 0];
-
-        if (newState.tokensLeft === 0) {
-            newState.terminalState = true;
-
-            if (playerID == 0) {
-                utilities = [1, -1];
-            } else {
-                utilities = [-1, 1];
-            }
-        } else {
-            this.incrementTurn(newState);
+            utilities = this.getUtilities(playerIndex)
         }
 
-        return {'newState': newState, 'utilities': utilities}
+        // Use the helper function to advance the turn
+        this.incrementTurn(state);
+
+        return this.reportOutcome(state, utilities);
     }
+}
+
+function runNim(player1=HumanNimPlayer, player2=ComputerNimPlayer, numTokens=17) {
+    let mod = new SeqModerator(players=[player1, player2], engine=NimEngine,
+        state = new NimState(numTokens));
+
+    mod.runGame();
 }

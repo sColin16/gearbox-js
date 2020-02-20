@@ -1,7 +1,10 @@
+// Class that implements gearbox API to allow a human to play Nim in the browser
+// This class must be bound to elements on the webpage
 class HumanNimPlayer extends AsyncPlayer {
     constructor() {
         super();
 
+        // Bind to the various buttons and display elements
         this.oneButton = document.getElementById('one-btn');
         this.twoButton = document.getElementById('two-btn');
 
@@ -9,20 +12,24 @@ class HumanNimPlayer extends AsyncPlayer {
         this.outcomeDisplay = document.getElementById('outcome-display');
         this.moveHistoryDisplay = document.getElementById('move-history-display');
 
+        // Add the event listeners to allow the player to make moves
         this.oneButton.addEventListener('click', () => this.takeAction(1));
         this.twoButton.addEventListener('click', () => this.takeAction(2));
     }
 
+    // This lets the player do something before a turn starts, in this case enabled the buttons
+    // And displaying the new total tokens
     startTurnActions(state) {
         this.oneButton.disabled = false;
         this.twoButton.disabled = false;
-        this.tokensDisplay.innerText = state.tokensLeft;
+        this.tokensDisplay.innerText = state.numTokens;
     }
 
+    // This lets the player do something right beforetheir turn ends, in this case disabling
+    // the buttons, but advanced features could change other UI elements
     endTurnActions() {
         this.oneButton.disabled = true;
         this.twoButton.disabled = true;
-        console.log('Could update and say something like waiting for other players now...')
     }
 
     reportGameStart() {
@@ -53,7 +60,7 @@ class HumanNimPlayer extends AsyncPlayer {
         this.moveHistoryDisplay.appendChild(moveRecord);
 
         // Update the number of tokens left
-        this.tokensDisplay.innerText = outcome.newState.tokensLeft;
+        this.tokensDisplay.innerText = outcome.newState.numTokens;
 
         // Report if the game is over
         if(outcome.utilities.personal === 1){
