@@ -1,6 +1,10 @@
 // A snake game that can be easily displayed with HTML5 canvas
 
+// This state is more complex, and includes some methods
+// Note that these methods are getters and setters, but don't advance the state - because
+// that's the engine's job.
 class SnakeState extends RealTimeState {
+    // Constants for what each value in the grid means
     static EMPTY = 0;
     static SNAKE = 1;
     static FOOD  = 2;
@@ -11,39 +15,21 @@ class SnakeState extends RealTimeState {
         this.direction = direction;
         this.gridSize = gridSize;
 
-        this.grid = new Array(gridSize); 
+        // Creates a 2D array of dimensions gridSize x gridSize
+        this.grid = Array.from({length: gridSize}, () => Array(gridSize).fill(SnakeState.EMPTY));
 
-        for (let i = 0; i < gridSize; i++) {
-            this.grid[i] = new Array(gridSize).fill(SnakeState.EMPTY)
-        }
-
+        // Store the snake as a queue, where the head is the back, tail is the front
+        // That way, we can pop off the tail, push on a new head
         this.snake = new Queue();
         this.updateHead(startX, startY);
 
+        // Put the correct amount of food onto the board
         for (let i = 0; i < numFood; i++) {
             this.addFood();    
         }
     }
 
-    copy() {
-        let copyState = new SnakeState(this.stepFreq, this.terminalState, this.direction,
-            this.gridSize, this.headX, this.headY, 0);
-
-        copyState.grid = new Array(this.gridSize);
-
-        for(let i = 0; i < this.gridSize; i++) {
-            copyState.grid[i] = [];
-
-            for(let j = 0; j < this.gridSize; j++) {
-                copyState.grid[i][j] = this.grid[i][j];
-            }
-        }
-
-        copyState.snake = this.snake.copy();
-
-        return copyState;
-    }
-
+    // Helper function to update the position of the snake's head on every step
     updateHead(newHeadX, newHeadY) {
         this.headX = newHeadX;
         this.headY = newHeadY;
@@ -53,6 +39,8 @@ class SnakeState extends RealTimeState {
         this.setTile(newHeadX, newHeadY, SnakeState.SNAKE);
     }
 
+    // Helper function to remove the snake's tail if it didn't eat in that step
+    // Returns the x,y coordinates so player know the coordinates that were changed
     removeTail() {
         let tail = this.snake.dequeue();
 
@@ -61,6 +49,8 @@ class SnakeState extends RealTimeState {
         return {tailX: tail.x, tailY: tail.y};
     }
 
+    // Places food in a random empty location
+    // Also returns the x,y coordinates so the player knows the coordinates changed
     addFood() {
         while (true) {
             var foodX = Math.floor(this.gridSize * Math.random());
@@ -73,7 +63,8 @@ class SnakeState extends RealTimeState {
             }
         }
     }
-
+    
+    // Getters and setters for the grid, so calls don't have to worry about x or y first
     getTile(x, y) {
         return this.grid[y][x];
     }
@@ -93,6 +84,7 @@ class SnakeGameModerator extends RealTimeModerator {
 }
 
 class SnakeEngine extends RealTimeEngine {
+    // Definitions of change to positions for each possible action
     static DIRECTIONS = {
         'UP':    {x:  0, y: -1},
         'DOWN':  {x:  0, y:  1},
@@ -100,56 +92,58 @@ class SnakeEngine extends RealTimeEngine {
         'LEFT':  {x: -1, y:  0}
     }
 
+    // Also just use the default verifyValid action function
     constructor() {
-        super(1);
+        super(['UP', 'DOWN', 'RIGHT', 'LEFT']);
     }
 
-    verifyValid(action, state, playerID) {
-        return action === 'UP' || action === 'DOWN' || action === 'LEFT' || action === 'RIGHT';
-    }
-
+    // Updating the state based on the action is purely a matter of changing the direction
     getNextState(action, state, playerID) {
-        let newState = state.copy();
-        let utilities = [state.snake.size()]; // Never any utility to changing direction
+        // Deep clone the state using the Lodash library
+        let utilities = 0; // No utility for changing direction
 
-        newState.direction = action;
+        state.direction = action;
 
-        return {'newState': newState, 'utilities': utilities}
+        return this.reportOutcome(state, utilities);
     }
 
+    // Steping is more involved, updating positions, heads, tails, and food
     step(state) {
         let action = []; // Holds an array of objects marking all x, y coordinate updated
-        let newState = state.copy();
 
+        // The change in the coordinates of the head, based on the direction facing
         let deltaX = SnakeEngine.DIRECTIONS[state.direction].x;
         let deltaY = SnakeEngine.DIRECTIONS[state.direction].y;
 
         let newHeadX = state.headX + deltaX;
         let newHeadY = state.headY + deltaY;
 
+        let utilities = 0;
+
         if (this.isGameOverPos(newHeadX, newHeadY, state)) {
-            newState.terminalState = true;
+            state.terminalState = true;
 
         } else {
-            newState.updateHead(newHeadX, newHeadY);
-            action.push({x: newHeadX, y: newHeadY});
-
             if (state.getTile(newHeadX, newHeadY) == SnakeState.FOOD) {
-                let {foodX, foodY} = newState.addFood();
+                utilities = [1]; // Get 1 utility if food was eaten
+
+                let {foodX, foodY} = state.addFood();
                 action.push({x: foodX, y: foodY});
 
             } else {
-                let {tailX, tailY} = newState.removeTail();
+                let {tailX, tailY} = state.removeTail();
                 action.push({x: tailX, y:tailY});
-
             }
+
+            // Update the head position last to avoid overwriting the food position too early
+            state.updateHead(newHeadX, newHeadY);
+            action.push({x: newHeadX, y: newHeadY});
         }
  
-        let utilities = [state.snake.size()];
-
-        return this.reportStepOutcome(action, newState, utilities);
+        return this.reportStepOutcome(action, state, utilities);
     }
 
+    // Helper functions to determine is game over has occrued
     isGameOverPos(x, y, state) {
         return !this.isInBounds(x, y, state) || state.getTile(x, y) === SnakeState.SNAKE;
     }
@@ -157,4 +151,12 @@ class SnakeEngine extends RealTimeEngine {
     isInBounds(x, y, state) {
         return x >= 0 && x < state.gridSize && y >=0 && y < state.gridSize;
     }
+}
+
+function runSnake(player = new HumanSnakePlayer(600), stepFreq = 100, gridSize = 20,
+    numFood = 1) {
+    
+    mod = new SnakeGameModerator(player, stepFreq, gridSize, numFood);
+
+    mod.runGame();
 }

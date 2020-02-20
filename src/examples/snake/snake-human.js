@@ -1,4 +1,8 @@
+// This class implements the gearbox API to allow a human to play snake in the browser
+// This class must be bound to the score box, but creates its own canvas
+
 class HumanSnakePlayer extends RealTimePlayer {
+    // The colors that each type of square is colored
     static COLORS = {
         [SnakeState.EMPTY]: color(0,   0,   0),
         [SnakeState.SNAKE]: color(0,   255, 0),
@@ -13,14 +17,19 @@ class HumanSnakePlayer extends RealTimePlayer {
         this.scoreDisplay = document.getElementById('score-display');
     }
 
+    // Requires more work to set up everything
     reportGameStart(state) {
+        // Don't know game size until we recieve the state object
         this.tileWidth = this.canvasSize / state.gridSize;
 
+        // Create the canvas object
         let canvas = createCanvas(this.canvasSize, this.canvasSize);
         canvas.parent('canvas-container');
 
+        // Draw the entire state (only this time)
         this.drawState(state);
 
+        // Bind all the event listeners (this probably could have been done in constructor)
         window.addEventListener('keydown', event => {
             switch (event.key) {
                 case "ArrowUp":
@@ -43,16 +52,19 @@ class HumanSnakePlayer extends RealTimePlayer {
         });
     }
 
+    // Update the tiles that were changed, and the score display
     reportOutcome(outcome) {
         if(outcome.engineStep) {
             for (let i = 0; i < outcome.action.length; i++) {
                 this.drawTile(outcome.action[i], outcome.newState);
             }
 
-            this.scoreDisplay.innerText = outcome.utilities.personal; 
+            this.scoreDisplay.innerText = int(this.scoreDisplay.innerText) 
+                + outcome.utilities.personal; 
         }
     }
 
+    // Show a big "Game Over" text on the canvas!
     reportGameEnd() {
         fill(255);
         textAlign(CENTER, CENTER);
@@ -60,6 +72,7 @@ class HumanSnakePlayer extends RealTimePlayer {
         text('GAME OVER', this.canvasSize / 2, this.canvasSize / 2);
     }
 
+    // Draw every individual tile
     drawState(state) {
         for(let i = 0; i < state.gridSize; i++) {
             for(let j = 0; j < state.gridSize; j++) {
@@ -68,6 +81,7 @@ class HumanSnakePlayer extends RealTimePlayer {
         }
     }
 
+    // Draw a single tile of the game
     drawTile(coordinate, state) {
         let x = coordinate.x;
         let y = coordinate.y;

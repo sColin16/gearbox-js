@@ -430,8 +430,8 @@ class RealTimeModerator extends Moderator {
         // Make sure the game didn't enter a terminal state, likely in an action since a frame 
         // was processed
         if (!this.state.terminalState) {
-            // Let the engine process the next step
-            let engineOutcome = this.engine.step(this.state);
+            // Let the engine process the next step (work with a clone)
+            let engineOutcome = this.engine.step(_.cloneDeep(this.state));
 
             // Update the stored game state and step rate
             this.updateState(engineOutcome);
@@ -611,7 +611,7 @@ class RealTimeEngine extends SeqEngine {
 
     reportStepOutcome(action, newState, utilities) {
         return new RealTimeEngineOutcome(true, newState,
-            utilities, action, undefined, true); 
+            this.expandUtilities(utilities), action, undefined, true); 
 
     }
 
