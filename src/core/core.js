@@ -4,12 +4,6 @@ class Queue {
         this.items = items;
     }
 
-    copy() {
-        let itemsCopy = this.items.slice();
-
-        return new Queue(itemsCopy);
-    }
-
     enqueue(item) {
         this.items.push(item);
     }
@@ -46,12 +40,10 @@ class SimState {
 
 // Base class for storing state for sequential games 
 class SeqState extends SimState {
-    constructor(terminalState = false, turn = 0) {
+    constructor(turn=0, terminalState=false) {
         super(terminalState);
 
         this.turn = turn; // Stores which player should move next
-                          // Necessary in games when players can move multiple time in a row
-                          // (Like dots and boxes or mancala)             
     }
 }
 
@@ -202,9 +194,28 @@ class AsyncPlayer extends Player {
 // Base class for object that handle interactions between players and the engine
 class Moderator {
     constructor(players, engine, state) {
+        // For each player, if a class name was passed, construct a default player
+        for (let i = 0; i < players.length; i++ ){
+            if (typeof players[i] === "function") {
+                players[i] = new players[i]();
+            }
+        }
+
+        // Do the same for the engine and the state
+        if (typeof engine === "function") {
+            engine =  new engine();
+        }
+
+        if (typeof state === "function") {
+            state = new state();
+        }
+
         this.players = players // Array of Player objects
         this.engine = engine   // Engine object used to handle game logic
         this.state = state     // State object holding current game state
+
+        // Let the engine know how many players there are (so you don't have to tell them)
+        this.engine.alertTotalPlayers(players.length);
     }
 
     // Helper function to update the game state based on engine output
@@ -220,6 +231,7 @@ class Moderator {
 
     // Continually runs turns until the state reached it terminal
     async runGame() {
+        console.log(this.players)
         this.players.forEach(player => player.reportGameStart(this.state));
 
          while(!this.state.terminalState) {
@@ -253,6 +265,7 @@ class Moderator {
 
         if (!ownAction && forPlayerIndex < actionPlayerIndex) {
             relativeIndex = actionPlayerIndex - 1;
+
         } else if(!ownAction && forPlayerIndex > actionPlayerIndex) {
             relativeIndex = actionPlayerIndex;
         }
@@ -260,6 +273,7 @@ class Moderator {
         return new SeqPlayerID(ownAction, relativeIndex);
     }
 
+    // TODO: allow this to take in the playerID so its actually usable
     // Modifies the board to hide information or make all boards look the same to all players
     // (e.g. all players beleive they are X in a Tic-Tac-Toe game)
     // Defaults to no transformation
@@ -275,9 +289,15 @@ class Moderator {
 
 // Moderator subclass for sequential games, where turns take place one after the other
 class SeqModerator extends Moderator {
+    constructor(players, engine, state) {
+        super(players, engine, state);
+
+    }
+
     // Runs a single turn for a Sequential Game
     async runTurn() {
         // Get the action of the player whose turn it is
+        console.log(this.state.turn)
         let action = await this.players[this.state.turn].getAction(this.state);
 
         // Let the engine process the outcome
@@ -455,28 +475,61 @@ class RealTimeModerator extends Moderator {
 
 // Base class for object that handles all the game logic for any partcular game
 class Engine {
-    constructor() {}
+    constructor(validActions=[]) {
+        this.validActions = validActions; 
+    }
 
+    // The moderator calls this function once all players have been passed in
+    // Necessary for the incrementTurn function for SeqEngine, and other helpers below)
+    alertTotalPlayers(numPlayers) {
+        this.totalPlayers = numPlayers;
+    }
+
+    // Helper function for direct subclasses of engines to allow game-specific subclasses to
+    // pass 0 if all players get 0 utility
+    expandUtilities(utilities) {
+        if (utilities === 0) {
+            return new Array(this.totalPlayers).fill(0);
+        }
+        
+        return utilities;
+    }
+    
+    // Helper function so that engine subclasses don't have to pass object literals
+    reportOutcome(newState, utilities) {
+        return {'newState': newState, 'utilities': this.expandUtilities(utilities)};
+    }
+
+    // Helper function for easy utility reporting, where the winner gets a 1, all else, -1s
+    getUtilities(winnerIndex) {
+        let output = new Array(this.totalPlayers).fill(-1);
+
+        output[winnerIndex] = 1;
+
+        return output;
+    }
+
+    // Should be defined by an engine subclass (e.g. SeqEngine)
     determineOutcome(action, state){}
 
-    verifyValid(action, state){}
+    // Should be defined by game-specific subclasses (e.g. NimEngine)
+    // Default is an easy way to verufy actions for simple games, often overwritten
+    verifyValid(action, state){
+        return this.validActions.includes(action);
+    }
 
     getNextState(action, state){}
 }
 
 
 class SeqEngine extends Engine {
-    constructor(totalPlayers) {
-        super();
-
-        this.totalPlayers = totalPlayers; // Used to determine the next turn
-    }
-
     determineOutcome(action, state, playerID) {
         let validTurn = this.verifyValid(action, state, playerID);
 
+        state = _.cloneDeep(state); // Create a clone of the state to work with
+
         let newState = state; // Leave the state unchanged by default
-        let utilities = new Array(this.totalPlayers).fill(0); // Have 0 utility be default too 
+        let utilities; // Utilities is undefined by default
 
         // Set newState and utilities if the action was valid
         if(validTurn) {
@@ -491,6 +544,7 @@ class SeqEngine extends Engine {
         return outcome;
     }
 
+    // Simple helper function to advanced the turn to the next player
     incrementTurn(state) {
         state.turn = (state.turn + 1) % this.totalPlayers;
     }
@@ -498,10 +552,6 @@ class SeqEngine extends Engine {
 
 // Engine subclass for simultaneous games
 class SimEngine extends Engine {
-    constructor() {
-        super()
-    }
-
     determineOutcome(actions, state) {
         let validTurn = true;
         let actionValidities = new Array(actions.length).fill(true);
@@ -512,6 +562,9 @@ class SimEngine extends Engine {
                 actionValidities[i] = false;
             }
         });
+
+        // Operate on a clone of the state
+        state = _.cloneDeep(state);
 
         let newState = state;
         let utilities = new Array(actions.length).fill(0);
@@ -533,12 +586,11 @@ class SimEngine extends Engine {
 // The RealTimeEngine is identical to the SeqEngine, just with an additional step function
 // which is run after a certain time interval to progress the game forward
 class RealTimeEngine extends SeqEngine {
-    constructor(totalPlayers) {
-        super(totalPlayers);
-    }
-
     determineOutcome(action, state, playerID) {
         let validTurn = this.verifyValid(action, state, playerID);
+
+        // Operate on a clone of the state
+        state = _.cloneDeep(state);
 
         let newState = state; // Leave the state unchanged by default
         let utilities = new Array(this.totalPlayers).fill(0); // Have 0 utility be default too 
