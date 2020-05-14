@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+         <!-- Lodash is used for deep cloning the states -->
+        <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/p5@0.10.2/lib/p5.js"></script>
+        <script type="text/javascript">
+            new p5(); // On-demand global mode to use color() outside of setup
+        </script>
+        <script type='text/javascript' src='/src/core/core.js'></script>
+        <script type='text/javascript' src='/src/games/pong/pong-core.js'></script>
+        <script type='text/javascript' src='/src/examples/pong/pong-human.js'></script>
+        <script type='text/javascript' src='/src/examples/pong/pong-computer.js'></script>
+        <script type='text/javascript'>
+            window.onload = () => runPong();
+        </script>
+    </head>
+
+    <body>
+        <div id='canvas-container'></div>
+    <body>
+</html>
+
