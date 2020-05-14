@@ -225,18 +225,22 @@ class Moderator {
 
     // Helper function to return outcomes to every player
     reportOutcomes(engineOutcome) {
-        this.players.forEach((player, i) =>
-            player.reportOutcome(this.personalizeOutcome(engineOutcome, i)));
+        this.players.forEach((player, i) => {
+            if (!this.hideOutcome(engineOutcome, i)) {
+                player.reportOutcome(this.personalizeOutcome(engineOutcome, i));
+            }
+        });
     }
 
     // Continually runs turns until the state reached it terminal
     async runGame() {
-        console.log(this.players)
-        this.players.forEach(player => player.reportGameStart(this.state));
+        this.players.forEach((player, playerIndex) => 
+            player.reportGameStart(this.transformState(_.cloneDeep(this.newState), 
+                playerIndex)));
 
-         while(!this.state.terminalState) {
+        while(!this.state.terminalState) {
             await this.runTurn();
-         }
+        }
         
         this.players.forEach(player => player.reportGameEnd());
 
@@ -273,12 +277,17 @@ class Moderator {
         return new SeqPlayerID(ownAction, relativeIndex);
     }
 
-    // TODO: allow this to take in the playerID so its actually usable
     // Modifies the board to hide information or make all boards look the same to all players
-    // (e.g. all players beleive they are X in a Tic-Tac-Toe game)
+    // (e.g. all players beleive they are X in a Tic-Tac-Toe game, pong players are on left)
     // Defaults to no transformation
-    transformState(state) {
+    transformState(state, forPlayerIndex) {
         return state;
+    }
+
+    // If this function returns true, the outcome will not be reported to the player
+    // By default, never hide an outcome
+    hideOutcome(engineOutcome, forPlayerIndex) {
+        return false;
     }
 
     // Transforms an engine outcome to an outcome provided to a player
@@ -297,7 +306,6 @@ class SeqModerator extends Moderator {
     // Runs a single turn for a Sequential Game
     async runTurn() {
         // Get the action of the player whose turn it is
-        console.log(this.state.turn)
         let action = await this.players[this.state.turn].getAction(this.state);
 
         // Let the engine process the outcome
@@ -314,10 +322,12 @@ class SeqModerator extends Moderator {
         let validTurn = engineOutcome.validTurn;
         let action = engineOutcome.action;
 
-        // The new state should be transformed by the moderator as necessary
-        let newState = this.transformState(engineOutcome.newState);
+        let stateCopy = _.cloneDeep(engineOutcome.newState);
 
-        // Return utilities as an OutcomeField so players differentiate between their/opponents
+        // The new state should be transformed by the moderator as necessary
+        let newState = this.transformState(stateCopy, playerIndex);
+
+        // Return utilities as OutcomeField so players differentiate between their/opponents
         let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
 
         // Determine the ID of the player who made the move (could have been self)
@@ -348,8 +358,10 @@ class SimModerator extends SeqModerator {
         // The validity of the action can be provided directly to the players
         let validTurn = engineOutcome.validTurn;
 
+        let stateCopy = _.cloneDeep(engineOutcome.newState);
+
         // The new state is transformed by the moderator as necessary
-        let newState = this.transformState(engineOutcome.newState);
+        let newState = this.transformState(stateCopy, playerIndex);
 
         // Make the actionValidities, utilites, and action arrays OutcomeFields
         let actionValidities = this.makeOutcomeField(
@@ -362,7 +374,8 @@ class SimModerator extends SeqModerator {
         let actions = validTurn ? this.makeOutcomeField(
             engineOutcome.actions, playerIndex) : undefined;
 
-        return new SimPlayerOutcome(validTurn, newState, utilities, actionValidities, actions);
+        return new SimPlayerOutcome(validTurn, newState, utilities, actionValidities, 
+            actions);
    }
 }
 
@@ -376,6 +389,10 @@ class RealTimeModerator extends Moderator {
 
         // Bind this moderator to each playe, so it knows where to submit its move
         this.players.forEach(player => player.bindModerator(this));
+
+        // Keep track of both of these so we can cancel them on game end
+        this.actionQueueTimeout;
+        this.engineStepTimeout;
     }
 
     async runGame() {
@@ -383,8 +400,11 @@ class RealTimeModerator extends Moderator {
         this.players.forEach(player => player.reportGameStart(this.state));
 
         // Schedule the first engine step
-        setTimeout(this.engineStep.bind(this), this.state.stepFreq);
+        this.engineStepTimeout = setTimeout(this.engineStep.bind(this), this.state.stepFreq);
         
+        // Reset the action queue when the game begins again
+        this.actionQueue = new Queue();
+
         // Now that every player has been alerted, start handling moves
         this.processActionQueue();
     }
@@ -420,29 +440,33 @@ class RealTimeModerator extends Moderator {
         // Now that we're done processing, free the event loop, and schedule the next batch
         // Only schedule the next batch if a terminal state was not reached
         if (!this.state.terminalState) {
-            setTimeout(this.processActionQueue.bind(this), 0);
+            this.actionQueueTimeout = setTimeout(this.processActionQueue.bind(this), 0);
         } else {
             this.players.forEach(player => player.reportGameEnd());
+
+            // Cancel the engine step so we don't report a terminal state twice
+            clearTimeout(this.engineStepTimeout);
         }
     }
 
     engineStep() {
-        // Make sure the game didn't enter a terminal state, likely in an action since a frame 
-        // was processed
+        // Let the engine process the next step (work with a clone)
+        let engineOutcome = this.engine.step(_.cloneDeep(this.state));
+
+        // Update the stored game state and step rate
+        this.updateState(engineOutcome);
+        this.reportOutcomes(engineOutcome);
+
         if (!this.state.terminalState) {
-            // Let the engine process the next step (work with a clone)
-            let engineOutcome = this.engine.step(_.cloneDeep(this.state));
+            // Schedule the next step
+            this.engineStepTimeout = setTimeout(this.engineStep.bind(this),
+                this.state.stepFreq);
 
-            // Update the stored game state and step rate
-            this.updateState(engineOutcome);
-            this.reportOutcomes(engineOutcome);
+        } else {
+            this.players.forEach(player => player.reportGameEnd());
 
-            if (!this.state.terminalState) {
-                // Schedule the next step
-                setTimeout(this.engineStep.bind(this), this.state.stepFreq);
-            } else {
-                this.players.forEach(player => player.reportGameEnd());
-            }
+            // Cancel the action queue so we don't report terminal state twice
+            clearTimeout(this.actionQueueTimeout);
         }
     }
 
@@ -459,10 +483,17 @@ class RealTimeModerator extends Moderator {
         let engineStep = engineOutcome.engineStep;
         let action = engineOutcome.action;
 
-        // The new state should be transformed by the moderator as necessary
-        let newState = this.transformState(engineOutcome.newState);
+        // Transform the engine outcome as necessary
+        if (engineStep) {
+            action = this.transformEngineAction(action, playerIndex);
+        }
 
-        // Return utilities as an OutcomeField so players differentiate between their/opponents
+        let stateCopy = _.cloneDeep(engineOutcome.newState);
+
+        // The new state should be transformed by the moderator as necessary
+        let newState = this.transformState(stateCopy, playerIndex);
+
+        // Return utilities as OutcomeField so players differentiate between their/opponents
         let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
        
         let playerID = engineStep ? undefined:
@@ -470,6 +501,11 @@ class RealTimeModerator extends Moderator {
 
         return new RealTimePlayerOutcome(validTurn, newState, utilities, action, playerID,
             engineStep);
+    }
+
+    // Should be defined by subclasses to make engine outcomes be consistent with transformed states 
+    transformEngineAction(engineAction, playerIndex) {
+        return engineAction;
     }
 }
 
