@@ -27,8 +27,8 @@ The players are the agents. They take a state as an input, and provide an action
 More complex behavoir can be programmed into them, but the moderator assumes that every
 player is a stateless entity.
 
-Currently, simultaneous, sequential, and real-time gameplay is supported by the API. Five
-examples, Rock, Paper, Scissors, Nim (really the subtraction game), a counting game, snake, and pong
+Currently, simultaneous, sequential, and real-time gameplay is supported by the API. Four
+examples, Rock, Paper, Scissors, Nim (really the subtraction game), snake, and pong
 are provided. Through these examples, various aspects of the API are used. There are a series of 
 improvement that will be made to the API over time. Here are a few on the roadmap:
 
