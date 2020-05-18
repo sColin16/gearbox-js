@@ -171,10 +171,10 @@ class PlayerOutcomeField {
 
 // For when a playerID is bound to an action
 class PlayerIDField {
-    constructor(ownAction, playerID) {
-        this.ownAction = ownAction; // True if the action was made by the player
+    constructor(isSelf, playerID) {
+        this.isSelf = isSelf;       // True if refering to the player (his action, turn, etc.)
         this.playerID = playerID;   // Index of the player relative to this player
-                                    // undefined if ownAction is true
+                                    // undefined if isSelf is true
     }
 }
 
@@ -390,7 +390,7 @@ class Moderator {
         let validity = this.transformValidity(outcomeCopy.validity, playerID);
         let action = this.transformActionHandler(outcomeCopy.action, playerID);
         let utilities = this.transformUtilities(outcomeCopy.utilities, playerID);
-        let state = this.transformState(outcomeCopy.state, playerID);
+        let state = this.transformStateHandler(outcomeCopy.state, playerID);
         let stateDelta = this.transformStateDelta(outcomeCopy.stateDelta, playerID);
 
         // Return the transformed outcome
@@ -420,6 +420,10 @@ class Moderator {
 
     transformUtilities(utilities, playerID) {
         return this.makePlayerOutcomeField(utilities, playerID);
+    }
+
+    transformStateHandler(state, playerID) {
+        return this.transformState(state, playerID);
     }
 
     transformState(state, playerID) {
@@ -466,11 +470,19 @@ class SeqModerator extends Moderator {
     }
 
     transformActionHandler(action, playerID) {
-        action = this.transformAction(action); // Allow subclass to transform action
+        action = this.transformAction(action, playerID); // Allow subclass to transform action
 
         action.playerID = this.adjustPlayerID(playerID, action.playerID); // Adjust ID
 
         return action;
+    }
+
+    transformStateHandler(state, playerID) {
+        state = this.transformState(state, playerID); // Allow subclass to transform state
+
+        state.turn = this.adjustPlayerID(playerID, state.turn);
+
+        return state;
     }
 }
 
@@ -496,8 +508,8 @@ class SimModerator extends Moderator {
     }
 }
 
-// Inherits the transformActionHandler method from SeqModerator
-class RealTimeModerator extends SeqModerator {
+// Note this class also uses the transformActionHandler of SeqModerator (after class def.)
+class RealTimeModerator extends Moderator {
     constructor(players, engine, state) {
         super(players, engine, state);
 
@@ -578,3 +590,6 @@ class RealTimeModerator extends SeqModerator {
         this.actionQueue.enqueue(newAction);
     }
 }
+// Take the transformActionHandler method of the SeqModerator as well
+RealTimeModerator.prototype.transformActionHandler =
+    SeqModerator.prototype.transformActionHandler;
