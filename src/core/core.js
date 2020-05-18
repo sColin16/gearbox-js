@@ -21,142 +21,28 @@ class Queue {
     }
 }
 
-// Returns a promise that takes ms milliseconds to resolve
-// Keep this function for now just to test a network player with lag
-// To use it as a wait block do 'await delay(100);'
-// Or, delay(100).then(// Do stuff)
 async function delay(ms) {
-    return new Promise(function(resolve,reject) {
+    return new Promise(function(resolve, reject) {
         setTimeout(resolve, ms);
     });
 }
 
-// Base class for storing state for all simultaneous games
-class SimState {
-    constructor(terminalState = false) {
-        this.terminalState = terminalState;
-    }
-}
-
-// Base class for storing state for sequential games 
-class SeqState extends SimState {
-    constructor(turn=0, terminalState=false) {
-        super(terminalState);
-
-        this.turn = turn; // Stores which player should move next
-    }
-}
-
-// Base class for storing state for RealTimeGame (same as SimState)
-class RealTimeState extends SimState {
-    constructor(stepFreq, terminalState = false) {
-        super(terminalState);
-
-        this.stepFreq = stepFreq;
-    }
-}
-
-// One field of the outcome object, which stores the field for the player and the opponents
-class OutcomeField {
-    constructor(personal, opponents) {
-        this.personal = personal;   // Discrete value for the player
-        this.opponents = opponents; // Array of values for opponents
-    }
-}
-
-// Lets a player know if a sequential move was their own, or whose it was
-// Indexes match that of OutcomeField
-class SeqPlayerID {
-    constructor(ownAction, playerID) {
-        this.ownAction = ownAction; // If the action is made by the player or not
-        this.playerID = playerID;   // Index of the player who made the move if not self
-                                    // (undefined if ownAction is true)
-    }
-}
-
-// Base class for the information provided to players after a turn
-class Outcome {
-    constructor(validTurn, newState, utilities) {
-        this.validTurn = validTurn; // bool: if the action(s) was (were) valid
-        this.newState = newState;   // State: updated state object
-        this.utilities = utilities; // Array: "reward" each player recieves for the turn
-    }
-}
-
-// Outcome object returned by a Simultaneous Game Engine
-class SimEngineOutcome extends Outcome {
-    constructor(validTurn, newState, utilities, actionValidities, actions) {
-        super(validTurn, newState, utilities);
-
-        // Array: if each of the moves made were valid
-        this.actionValidities = actionValidities;
-
-        // Array: each of the moves made by the players
-        // NOTE: only returned if all actions were valid
-        this.actions = actions;
-    }
-}
-
-// Object provided to players after a turn in a Simultaneous games
-// Identical to SimEngineOutcome, but utilities, actions, and actionValidities should be 
-// OutcomeFields, not Arrays
-class SimPlayerOutcome extends SimEngineOutcome {}
-
-// Outcome object returned by a Sequential Game Engine
-class SeqEngineOutcome extends Outcome {
-    constructor(validTurn, newState, utilities, action, actionPlayerID) {
-        super(validTurn, newState, utilities);
-
-        // Universal property: the move made by the player whose turn it was
-        this.action = action;
-
-        // The index of the player who took the action
-        this.actionPlayerID = actionPlayerID;
-    }
-}
-
-// Object provided to players after a turn in a Sequential Game
-// Identical to SeqEngineOutcome, but utilities should be an OutcomeField, not an array,
-// and actionPlayerID should be a SeqPlayerID object, not an integer
-class SeqPlayerOutcome extends SeqEngineOutcome {}
-
-// Outcome object returned by a Real-Time Game Engine
-// Identical to SeqEngineOutcome, engineStep is true if outcome was a step, not a player action 
-class RealTimeEngineOutcome extends SeqEngineOutcome {
-    constructor(validTurn, newState, utilities, action, actionPlayerID, engineStep) {
-        super(validTurn, newState, utilities, action, actionPlayerID);
-
-        this.engineStep = engineStep;
-    }
-}
-
-// Outcome object provided to players
-class RealTimePlayerOutcome extends RealTimeEngineOutcome {}
-
-// Base class that defines the interface for all players - whether human or not
+// Base Class that defines the interface for all Seq/Sim Players
 class Player {
-    constructor() {}
-
-    // All players must return a move given some state 
-    // The player may be state-full even if the game is stateless, tracking opponent moves
+    // Should return an action representation, based off the given state
     getAction(state) {}
 
-    // Called whenever a moderator starts a new game
-    reportGameStart(state) {}
+    // called when a moderator starts a new game
+    handleGameStart(state) {}
 
-    // Provides the player with information about the result of a turn, including utilities
-    reportOutcome(outcome) {}
+    // called when the result of a turn is processed
+    handleOutcome(outcome) {}
 
-    // Called whenever a moderator ends a game
-    reportGameEnd() {}
+    // called when the moderator ends a game
+    handleGameEnd() {}
 }
 
-// Class that all RealTimePlayers should be based off of
-// Abstracts away some implementation details of the moderator
 class RealTimePlayer {
-    constructor() {
-    }
-
     bindModerator(moderator) {
         this.moderator = moderator;
     }
@@ -166,491 +52,529 @@ class RealTimePlayer {
     }
 }
 
-// Parent class for HumanPlayers and NetworkPlayers, which provides an easy interface for players
-// who don't make moves synchronously to interface with the synchronous moderators (Seq/Sim)
+// Base class for players who play asynchronously, like humans, or things over the network
+// Provides a simplfied interface to make it integrate with the synchronous moderators
 class AsyncPlayer extends Player {
+    // Instead of using getAction, players should call takeAction(action)
     async getAction(state) {
         this.startTurnActions(state);
 
+        // Return a promise, which will resolve when the player runs the function takeAction
         return new Promise((resolve, reject) => {
             this.takeAction = (action) => {
                 this.endTurnActions();
 
+                // By resolving, we will return the action the user submitted
                 resolve(action);
 
-                this.takeAction = ()=>{};
+                this.takeAction = () => {};
             }
         });
     }
 
-    // Function that subclasses can define to do things (e.g. update UI, make ajax request)
-    // When the turn begins
+    // Called when a turn begins, to update the UI, etc.
     startTurnActions(state) {}
 
-    // Function that subclasses can define to do things at the end of a turn
+    // Called after the player submits an action, to update the UI, etc.
     endTurnActions() {}
 }
 
-// Base class for object that handle interactions between players and the engine
+// Validity Classes
+class Validity {
+    constructor(overall) {
+        this.overall = overall;  // The validity of the step overall
+    }
+}
+
+class SimValidity extends Validity {
+    constructor(overall, individual) {
+        super(overall);
+
+        this.individual = individual;  // Validity of each individual action
+    }
+}
+
+class SeqValidity extends Validity{}
+class RealTimeValiditiy extends Validity {}
+
+// Action Classes
+class Action {
+    constructor(actionRepr) {
+        this.actionRepr = actionRepr;
+    }
+}
+
+class SeqAction extends Action {
+    constructor(actionRepr, playerID) {
+        super(actionRepr);
+        
+        this.playerID = playerID;
+    }
+}
+
+class RealTimeAction extends SeqAction {
+    constructor(actionRepr, playerID, engineStep) {
+        super(actionRepr, playerID);
+
+        this.engineStep = engineStep;
+    }
+}
+
+class SimAction extends Action {};
+
+// State Classes
+class State {
+    constructor(terminalState = false) {
+        this.terminalState = terminalState;
+    }
+}
+
+class SeqState extends State {
+    constructor(turn = 0, terminalState = false) {
+        super(terminalState);
+
+        this.turn = turn; // Tracks which player will move next
+    }
+}
+
+class RealTimeState extends State {
+    constructor(stepFreq, terminalState = false) {
+        super(terminalState);
+
+        this.stepFreq = stepFreq;
+    }
+}
+
+class SimState extends State {};
+
+// Outcome class (combines the above classes)
+class Outcome {
+    constructor(validity, action, utilities, state, stateDelta) {
+        this.validity = validity;
+        this.action = action;
+        this.utilities = utilities;
+        this.state = state;
+        this.stateDelta = stateDelta;
+    }
+}
+
+class EngineOutcome extends Outcome{} // What engines return
+class PlayerOutcome extends Outcome{} // What players are provided
+
+// For when arrays are returned from the engine
+class PlayerOutcomeField {
+    constructor(personal, opponents) {
+        this.personal = personal;
+        this.opponents = opponents;
+    }
+}
+
+// For when a playerID is bound to an action
+class PlayerIDField {
+    constructor(ownAction, playerID) {
+        this.ownAction = ownAction; // True if the action was made by the player
+        this.playerID = playerID;   // Index of the player relative to this player
+                                    // undefined if ownAction is true
+    }
+}
+
+// Engine classes
+class Engine {
+    constructor(validActions) {
+        this.validActions = validActions;
+    }
+
+    // Called by the moderator to help support helper functions within the engine
+    // NOTE: if the player count is dynamic, you should not rely on this property
+    setPlayerCount(playerCount) {
+        this.playerCount = playerCount;
+    }
+
+    // Primary function run to handle an action
+    determineOutcome(state, action) {
+        // Test if the action was valid
+        let validity = this.validateActionHandler(state, action);
+
+        // Leave these undefined by default
+        let reportedAction;  // We may want to hide the actions, if they are invalid
+        let utilities;
+        let newState;
+        let stateDelta;
+
+        // Only handle the action if it is valid
+        if (validity.overall) {
+            // Since the action was valid, we can report it
+            reportedAction = action;
+
+            // Copy the state, so engine base classes can modify it how they see fit
+            state = _.cloneDeep(state);
+
+            // Process the action
+            ({utilities, newState, stateDelta} = this.processAction(state, action));
+        }
+
+        // Return the outcome
+        return new EngineOutcome(validity, reportedAction, utilities, newState, stateDelta);
+    }
+
+    // Upper-level method for direct subclasses of Engine
+    // This allows direct subclasses to implement custom functionality, while still allowing
+    // game-specific Engine subclasses to have custom validateAction methods
+    // This is particualrly important for simultaneous games, which must allow for custom
+    // validateAction methods, but also need to combine the validities into an array
+    validateActionHandler(state, action) {
+        return new Validity(this.validateAction(state, action));
+    }
+
+    // Lower-level method that should just return a boolean for an individual action
+    // This default method uses the "validActions" property set by the constructor
+    validateAction(state, action) {
+        return this.validActions.includes(action.actionRepr);
+    }
+
+    // Should return this.outcome(utilties, newState, stateDelta)
+    processAction(state, action) {}
+
+    // Function that should be called by subclasses as the return value in processAction
+    outcome(utilities, newState, stateDelta) {
+        return {'utilities': this.expandUtilities(utilities), 'newState': newState, 
+            'stateDelta': stateDelta};
+    }
+
+    // Lets engines return a utility of 0, which is expanded into the full array
+    expandUtilities(utilities) {
+        if (utilities === 0) {
+            return new Array(this.playerCount).fill(0);
+        }
+
+        return utilities;
+    }
+
+    // Helper function to provide utilities if a certain player won
+    winnerUtilities(winnerIndex) {
+        let utilities = new Array(this.playerCount).fill(-1);
+
+        utilities[winnerIndex] = 1;
+
+        return utilities;
+    }
+}
+
+class SeqEngine extends Engine {
+    incrementTurn(state) {
+        state.turn = (state.turn + 1) % this.playerCount;
+    }
+}
+
+class SimEngine extends Engine {
+    validateActionHandler(state, action) {
+        let validity = new SimValidity(true, new Array(action.actionRepr.length).fill(true));
+
+        action.actionRepr.forEach((singleActionRepr, i) => {
+            // Convert each action to a SeqAction so the default validateAction method works
+            let singleAction = new SeqAction(singleActionRepr, i);
+
+            if (!this.validateAction(state, singleAction)) {
+                validity.overall = false;
+                validity.individual[i] = false;
+            }
+        });
+
+        return validity;
+    }
+}
+
+class RealTimeEngine extends Engine {
+    // Separates the two types of actions this type of engine might handle
+    processAction(state, action) {
+        if (action.engineStep) {
+            return this.processEngineStep;
+        } else {
+            return this.processPlayerAction;
+        }
+    }
+
+    // Function that must be defined by subclasses, advancing the game forward a frame
+    processEngineStep() {}
+
+    // Function that must be defined by subclasses, whenever a player takes an action
+    processPlayerAction() {}
+
+    // Function that should be called by subclasses as the return value in step
+    stepOutcome(actionRepr, utilities, newState, stateDelta) {
+        let validity = new RealTimeValidity(true);
+        
+        // Second arg is playerID, third arg is engineStep
+        let action = new RealTimeAction(actionRepr, undefined, true);
+        
+        utilities = this.expandUtilities(utilities);
+
+        return new EngineOutcome(validity, action, utilities, newState, stateDelta);
+    }
+}
+
+// Moderator classes
 class Moderator {
     constructor(players, engine, state) {
-        // For each player, if a class name was passed, construct a default player
-        for (let i = 0; i < players.length; i++ ){
-            if (typeof players[i] === "function") {
-                players[i] = new players[i]();
-            }
+        this.players = [];
+
+        for (let i = 0; i < players.length; i++) {
+            this.players[i] = this.initializeClass(players[i]);
         }
 
-        // Do the same for the engine and the state
-        if (typeof engine === "function") {
-            engine =  new engine();
-        }
-
-        if (typeof state === "function") {
-            state = new state();
-        }
-
-        this.players = players // Array of Player objects
-        this.engine = engine   // Engine object used to handle game logic
-        this.state = state     // State object holding current game state
-
-        // Let the engine know how many players there are (so you don't have to tell them)
-        this.engine.alertTotalPlayers(players.length);
+        this.engine = this.initializeClass(engine);
+        this.state = this.initializeClass(state);
     }
 
-    // Helper function to update the game state based on engine output
-    updateState(engineOutcome) {
-        this.state = engineOutcome.newState;
+    initializeClass(arg) {
+        if (typeof arg == "function") {
+            return new arg();
+        }
+
+        return arg;
     }
 
-    // Helper function to return outcomes to every player
-    reportOutcomes(engineOutcome) {
-        this.players.forEach((player, i) => {
-            if (!this.hideOutcome(engineOutcome, i)) {
-                player.reportOutcome(this.personalizeOutcome(engineOutcome, i));
+    // Handles actions necessary to start the game
+    // TODO: consider providing an optional payload of data that includes the state to players
+    startGame() {
+        this.players.forEach((player, playerID) => {
+            let stateCopy = _.cloneDeep(this.newState);
+            let transformedState = this.transformState(stateCopy, playerID);
+
+            player.handleGameStart(transformedState);
+        });
+
+        this.engine.setPlayerCount(this.players.length);
+    }
+
+    // Handles actions necessary to end the game
+    endGame() {
+        this.players.forEach(player => player.handleGameEnd());
+    }
+
+    // Should be defined by subclasses, if they used the default runGame loop
+    runTurn() {}
+
+    // Simple game loop sufficient from Sim/Seq Moderators
+    async runGame() {
+        this.startGame();
+
+        while (!this.state.terminalState) {
+            await this.runTurn();
+        }
+
+        this.endGame();
+    }
+
+    engineUpdate(action) {
+        let engineOutcome = this.engine.determineOutcome(this.state, action);
+
+        this.state = engineOutcome.state;
+
+        this.players.forEach((player, playerID) => {
+            if (!this.hideOutcome(engineOutcome, playerID)) {
+                let personalOutcome = this.personalizeOutcome(engineOutcome, playerID);
+
+                player.handleOutcome(personalOutcome);
             }
         });
     }
 
-    // Continually runs turns until the state reached it terminal
-    async runGame() {
-        this.players.forEach((player, playerIndex) => 
-            player.reportGameStart(this.transformState(_.cloneDeep(this.newState), 
-                playerIndex)));
+    // TODO: consider enumerating over the properties somehow
+    // Would probably require a dictionary of functions for each transformation
+    personalizeOutcome(engineOutcome, playerID) {
+        // Handle a copy of all the fields, so transform functions don't have to do the copying
+        let outcomeCopy = _.cloneDeep(engineOutcome);
 
-        while(!this.state.terminalState) {
-            await this.runTurn();
-        }
-        
-        this.players.forEach(player => player.reportGameEnd());
+        // Transform all aspects of the outcome
+        let validity = this.transformValidity(outcomeCopy.validity, playerID);
+        let action = this.transformActionHandler(outcomeCopy.action, playerID);
+        let utilities = this.transformUtilities(outcomeCopy.utilities, playerID);
+        let state = this.transformState(outcomeCopy.state, playerID);
+        let stateDelta = this.transformStateDelta(outcomeCopy.stateDelta, playerID);
 
-    }
-
-    // Given an array returned by an engine, creates an OutcomeField for the player at the
-    // given playerIndex
-    makeOutcomeField(array, playerIndex) {
-        let arrayCopy = array.slice(); // Copy the array so we don't modify the original
-
-        // Remove and extract the value specific to the player
-        let personalOutcome = arrayCopy.splice(playerIndex, 1)[0]; 
-
-        // Create and return the OutcomeField object
-        return new OutcomeField(personalOutcome, arrayCopy)
-    }
-
-    // Creates a SeqPlayerID object for the player at forPlayerIndex, given that the player
-    // at actionPlayerIndex took the action
-    makePlayerID(forPlayerIndex, actionPlayerIndex) {
-        // Determine if the player made the move themselves
-        let ownAction = forPlayerIndex == actionPlayerIndex ? true : false;
-
-        // By default, realtiveIndex is undefined (set below if not own action)
-        let relativeIndex;
-
-        if (!ownAction && forPlayerIndex < actionPlayerIndex) {
-            relativeIndex = actionPlayerIndex - 1;
-
-        } else if(!ownAction && forPlayerIndex > actionPlayerIndex) {
-            relativeIndex = actionPlayerIndex;
-        }
-
-        return new SeqPlayerID(ownAction, relativeIndex);
-    }
-
-    // Modifies the board to hide information or make all boards look the same to all players
-    // (e.g. all players beleive they are X in a Tic-Tac-Toe game, pong players are on left)
-    // Defaults to no transformation
-    transformState(state, forPlayerIndex) {
-        return state;
+        // Return the transformed outcome
+        return new PlayerOutcome(validity, action, utilities, state, stateDelta);
     }
 
     // If this function returns true, the outcome will not be reported to the player
-    // By default, never hide an outcome
-    hideOutcome(engineOutcome, forPlayerIndex) {
+    hideOutcome(engineOutcome, playerID) {
         return false;
     }
 
-    // Transforms an engine outcome to an outcome provided to a player
-    // All subclasses should define this function 
-    personalizeOutcome(engineOutcome, playerIndex){}
+    // Functions that transform EngineOutcome fields to PlayerOutcome fields
+    transformValidity(validity, playerID) {
+        return validity;
+    }
+
+    // This handler is necessary for Seq/RealTime Moderators to implment custom functionality
+    // I'd rather than an extra function on my side than require a call to super every time
+    // on the developer's side
+    transformActionHandler(action, playerID) {
+        return this.transformAction(action, playerID);
+    }
+
+    transformAction(action, playerID) {
+        return action;
+    }
+
+    transformUtilities(utilities, playerID) {
+        return this.makePlayerOutcomeField(utilities, playerID);
+    }
+
+    transformState(state, playerID) {
+        return state;
+    }
+
+    transformStateDelta(stateDelta, playerID) {
+        return stateDelta
+    }
+
+    // Helper function that transforms an array into an object that differentiates between the
+    // value for the player, and the values for the other players
+    makePlayerOutcomeField(arr, playerID) {
+        let personalOutcome = arr.splice(playerID, 1)[0]; // Extract player's value
+
+        return new PlayerOutcomeField(personalOutcome, arr);
+    }
+
+    // Helper function to transform the playerID field of an action in accordance with the above
+    // transformation to a playerOutcomeField
+    adjustPlayerID(forPlayerID, actionPlayerID) {
+        if (forPlayerID == actionPlayerID) {
+            return new PlayerIDField(true, undefined); // The action was an own-action
+
+        } else if (forPlayerID < actionPlayerID) {
+            return new PlayerIDField(false, actionPlayerID - 1);
+
+        } else {
+            return new PlayerIDField(false, actionPlayerID);
+        }
+    }
 }
 
-
-// Moderator subclass for sequential games, where turns take place one after the other
 class SeqModerator extends Moderator {
-    constructor(players, engine, state) {
-        super(players, engine, state);
-
-    }
-
-    // Runs a single turn for a Sequential Game
     async runTurn() {
-        // Get the action of the player whose turn it is
-        let action = await this.players[this.state.turn].getAction(this.state);
+        // Get the action from the player
+        let actionRepr = await this.players[this.state.turn].getAction(this.state);
 
-        // Let the engine process the outcome
-        let engineOutcome = this.engine.determineOutcome(action, this.state, this.state.turn);
-        
-        // Then update the stored game state, let all players know the outcome
-        this.updateState(engineOutcome);
-        this.reportOutcomes(engineOutcome);
+        // Package it with the turn
+        let action = new SeqAction(actionRepr, this.state.turn);
+
+        // Run the action through the engine, reporting outcomes, etc.
+        this.engineUpdate(action);
     }
 
-    // Transforms a SeqEngineOutcome to a SeqPlayerOutcome 
-    personalizeOutcome(engineOutcome, playerIndex) {
-        // The valdity of the action and action can be provided directly to the players
-        let validTurn = engineOutcome.validTurn;
-        let action = engineOutcome.action;
+    transformActionHandler(action, playerID) {
+        action = this.transformAction(action); // Allow subclass to transform action
 
-        let stateCopy = _.cloneDeep(engineOutcome.newState);
+        action.playerID = this.adjustPlayerID(playerID, action.playerID); // Adjust ID
 
-        // The new state should be transformed by the moderator as necessary
-        let newState = this.transformState(stateCopy, playerIndex);
-
-        // Return utilities as OutcomeField so players differentiate between their/opponents
-        let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
-
-        // Determine the ID of the player who made the move (could have been self)
-        let playerID = this.makePlayerID(playerIndex, engineOutcome.actionPlayerID);
-
-        return new SeqPlayerOutcome(validTurn, newState, utilities, action, playerID);
+        return action;
     }
 }
 
-// Moderator subcalss for simultaneous games, where all players make a move at once
-class SimModerator extends SeqModerator {
-    // Runs a single turn for a Simultaneous game
+class SimModerator extends Moderator {
     async runTurn() {
-        // Get the actions for all players (await all of the players to return an action)
-        let actions = await Promise.all(
-            this.players.map(player => player.getAction(this.state)));    
+        // Get actions from all players, waiting for every player to submit an action
+        let actionRepr = await Promise.all(
+            this.players.map(player => player.getAction(this.state)));
 
-        // Process these actions in the engine
-        let engineOutcome = this.engine.determineOutcome(actions, this.state);
-
-        // Then update the stored game state, let all players know the outcome
-        this.updateState(engineOutcome);
-        this.reportOutcomes(engineOutcome);
+        this.engineUpdate(new SimAction(actionRepr));
     }
 
-    // Transform a SimEngineOutcome to a SimPlayerOutcome
-    personalizeOutcome(engineOutcome, playerIndex){ 
-        // The validity of the action can be provided directly to the players
-        let validTurn = engineOutcome.validTurn;
+    transformValidity(validity, playerID) {
+        validity.individual = this.makePlayerOutcomeField(validity.individual, playerID);
 
-        let stateCopy = _.cloneDeep(engineOutcome.newState);
+        return validity;
+    }
 
-        // The new state is transformed by the moderator as necessary
-        let newState = this.transformState(stateCopy, playerIndex);
+    transformAction(action, playerID) {
+        action.actionRepr = this.makePlayerOutcomeField(action.actionRepr, playerID);
 
-        // Make the actionValidities, utilites, and action arrays OutcomeFields
-        let actionValidities = this.makeOutcomeField(
-            engineOutcome.actionValidities, playerIndex);
-
-        let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
-
-        // Only return the actions if they were all valid. This prevents players from
-        // strategically making invalid moves to study opponent behavoiral patterns
-        let actions = validTurn ? this.makeOutcomeField(
-            engineOutcome.actions, playerIndex) : undefined;
-
-        return new SimPlayerOutcome(validTurn, newState, utilities, actionValidities, 
-            actions);
-   }
+        return action;
+    }
 }
 
-// Moderator subclass for realtime games, where time advances the game, and players move whenever
-class RealTimeModerator extends Moderator {
+// Inherits the transformActionHandler method from SeqModerator
+class RealTimeModerator extends SeqModerator {
     constructor(players, engine, state) {
         super(players, engine, state);
 
-        // Stores all the actions that need to be processed coming up
+        // Stores all the action that need to be processed still
         this.actionQueue = new Queue();
 
-        // Bind this moderator to each playe, so it knows where to submit its move
+        // Bind the moderator to each player, so it knows where to submit it's move
         this.players.forEach(player => player.bindModerator(this));
 
-        // Keep track of both of these so we can cancel them on game end
+        // Store the timeouts, so they can be cancelled when the game ends
         this.actionQueueTimeout;
         this.engineStepTimeout;
     }
 
     async runGame() {
-        // Let each player know the game has begun
-        this.players.forEach(player => player.reportGameStart(this.state));
+        this.actionQueue = new Queue(); // Reset the action queue when a new game begins
+
+        this.startGame(); // Call superclass method to alert players of game start
 
         // Schedule the first engine step
-        this.engineStepTimeout = setTimeout(this.engineStep.bind(this), this.state.stepFreq);
-        
-        // Reset the action queue when the game begins again
-        this.actionQueue = new Queue();
+        this.engineStepTimeout = setTimeout(this.engineStep.bind(this),
+            (1000 / this.state.stepFreq));
 
-        // Now that every player has been alerted, start handling moves
+        // And start handling moves
         this.processActionQueue();
     }
 
-    // Process a single action in the queue, then schedule processing the next
+    // Helper function at the end of processActionQueue and engineStep used to schedule another
+    // or report game over if the game is indeed over
+    reschedule(funcName, timeoutName, interval) {
+        let otherTimeout = timeoutName == 'actionQueueTimeout' ? 
+            'engineStepTimeout' : 'actionQueueTimeout';
+
+        // If the game is not over, schedule the function again
+        if (!this.state.terminalState) {
+            this[timeoutName] = setTimeout(this[funcName].bind(this), interval);
+
+        // If the game is over, report gameover to the players, and cancel the other process
+        } else {
+            this.gameEnd();
+
+            clearTimeout(this[otherTimeout]);
+        }
+    }
+
     processActionQueue() {
-        // Only process as many actions are currently in the queue, otherwise computer players
-        // will be able to submit unlimited moves while keeping the even queue blocked
+        // Limit numnber of actions processed to number at the start. Otherwise, players could
+        // keep submitting moves, blocking the event queue
         let actionsProcessed = 0;
         let actionsToProcess = this.actionQueue.size();
 
-        // Continue to process actions so long as the state is not terminal, there are actions
-        // to process, and the number of actions doesn't exceed the number to process
-        while (!this.state.terminalState && actionsProcessed < actionsToProcess) {
-
-            // Pull the next action out of the queue
+        // Keep processing until we've done them all (to the limit), or the game ended
+        while(!this.state.terminalState && actionsProcessed < actionsToProcess) {
             let nextAction = this.actionQueue.dequeue();
 
-            // Determine the index of the player who made the move
-            let playerIndex = this.players.indexOf(nextAction.playerRef);
-
-            // Process the in the engine
-            let engineOutcome = this.engine.determineOutcome(nextAction.action, 
-                this.state, playerIndex);
-
-            // Then update the stored game state, let all players know the outcome
-            this.updateState(engineOutcome);
-            this.reportOutcomes(engineOutcome);
+            this.engineUpdate(nextAction);
 
             actionsProcessed++;
         }
 
-        // Now that we're done processing, free the event loop, and schedule the next batch
-        // Only schedule the next batch if a terminal state was not reached
-        if (!this.state.terminalState) {
-            this.actionQueueTimeout = setTimeout(this.processActionQueue.bind(this), 0);
-        } else {
-            this.players.forEach(player => player.reportGameEnd());
-
-            // Cancel the engine step so we don't report a terminal state twice
-            clearTimeout(this.engineStepTimeout);
-        }
+        // Schedule another batch, or report gameover
+        this.reschedule('processActionQueue', 'actionQueueTimeout', 0);
     }
 
     engineStep() {
-        // Let the engine process the next step (work with a clone)
-        let engineOutcome = this.engine.step(_.cloneDeep(this.state));
+        // The first arg is actionRepr, second is playerID, third is engineStep
+        let stepAction = new RealTimeAction('step', undefined, true);
 
-        // Update the stored game state and step rate
-        this.updateState(engineOutcome);
-        this.reportOutcomes(engineOutcome);
+        this.engineUpdate(stepAction);
 
-        if (!this.state.terminalState) {
-            // Schedule the next step
-            this.engineStepTimeout = setTimeout(this.engineStep.bind(this),
-                this.state.stepFreq);
-
-        } else {
-            this.players.forEach(player => player.reportGameEnd());
-
-            // Cancel the action queue so we don't report terminal state twice
-            clearTimeout(this.actionQueueTimeout);
-        }
+        this.reschedule('engineStep', 'engineStepTimeout', (1000 / this.state.stepFreq));
     }
 
-    // Endpoint that RealTimePlayers should call to make a move
-    handleAction(action, playerRef) {
-        // Add the action to the queue
-        this.actionQueue.enqueue({'action': action, 'playerRef': playerRef});
+    handleAction(actionRepr, playerRef) {
+        // Build a real-time action based on the representation passed by the user
+        let newAction = new RealTimeAction(actionRepr, this.players.indexOf(playerRef), false);
+
+        this.actionQueue.enqueue(newAction);
     }
-
-    // Converts a RealTimeEngineOutcome to a RealTimePlayerOutcome
-    // Uses the SeqModerator function sincethe objects are identical
-    personalizeOutcome(engineOutcome, playerIndex) {
-        let validTurn = engineOutcome.validTurn;
-        let engineStep = engineOutcome.engineStep;
-        let action = engineOutcome.action;
-
-        // Transform the engine outcome as necessary
-        if (engineStep) {
-            action = this.transformEngineAction(action, playerIndex);
-        }
-
-        let stateCopy = _.cloneDeep(engineOutcome.newState);
-
-        // The new state should be transformed by the moderator as necessary
-        let newState = this.transformState(stateCopy, playerIndex);
-
-        // Return utilities as OutcomeField so players differentiate between their/opponents
-        let utilities = this.makeOutcomeField(engineOutcome.utilities, playerIndex);
-       
-        let playerID = engineStep ? undefined:
-            this.makePlayerID(playerIndex, engineOutcome.actionPlayerID);
-
-        return new RealTimePlayerOutcome(validTurn, newState, utilities, action, playerID,
-            engineStep);
-    }
-
-    // Should be defined by subclasses to make engine outcomes be consistent with transformed states 
-    transformEngineAction(engineAction, playerIndex) {
-        return engineAction;
-    }
-}
-
-// Base class for object that handles all the game logic for any partcular game
-class Engine {
-    constructor(validActions=[]) {
-        this.validActions = validActions; 
-    }
-
-    // The moderator calls this function once all players have been passed in
-    // Necessary for the incrementTurn function for SeqEngine, and other helpers below)
-    alertTotalPlayers(numPlayers) {
-        this.totalPlayers = numPlayers;
-    }
-
-    // Helper function for direct subclasses of engines to allow game-specific subclasses to
-    // pass 0 if all players get 0 utility
-    expandUtilities(utilities) {
-        if (utilities === 0) {
-            return new Array(this.totalPlayers).fill(0);
-        }
-        
-        return utilities;
-    }
-    
-    // Helper function so that engine subclasses don't have to pass object literals
-    reportOutcome(newState, utilities) {
-        return {'newState': newState, 'utilities': this.expandUtilities(utilities)};
-    }
-
-    // Helper function for easy utility reporting, where the winner gets a 1, all else, -1s
-    getUtilities(winnerIndex) {
-        let output = new Array(this.totalPlayers).fill(-1);
-
-        output[winnerIndex] = 1;
-
-        return output;
-    }
-
-    // Should be defined by an engine subclass (e.g. SeqEngine)
-    determineOutcome(action, state){}
-
-    // Should be defined by game-specific subclasses (e.g. NimEngine)
-    // Default is an easy way to verufy actions for simple games, often overwritten
-    verifyValid(action, state){
-        return this.validActions.includes(action);
-    }
-
-    getNextState(action, state){}
-}
-
-
-class SeqEngine extends Engine {
-    determineOutcome(action, state, playerID) {
-        let validTurn = this.verifyValid(action, state, playerID);
-
-        state = _.cloneDeep(state); // Create a clone of the state to work with
-
-        let newState = state; // Leave the state unchanged by default
-        let utilities; // Utilities is undefined by default
-
-        // Set newState and utilities if the action was valid
-        if(validTurn) {
-            let nextState = this.getNextState(action, state, playerID);
-
-            newState = nextState.newState;
-            utilities = nextState.utilities;
-        }
-
-        let outcome = new SeqEngineOutcome(validTurn, newState, utilities, action, playerID);
-
-        return outcome;
-    }
-
-    // Simple helper function to advanced the turn to the next player
-    incrementTurn(state) {
-        state.turn = (state.turn + 1) % this.totalPlayers;
-    }
-}
-
-// Engine subclass for simultaneous games
-class SimEngine extends Engine {
-    determineOutcome(actions, state) {
-        let validTurn = true;
-        let actionValidities = new Array(actions.length).fill(true);
-
-        actions.forEach((action, i) => {
-            if (!this.verifyValid(action, state)) {
-                validTurn = false;
-                actionValidities[i] = false;
-            }
-        });
-
-        // Operate on a clone of the state
-        state = _.cloneDeep(state);
-
-        let newState = state;
-        let utilities = new Array(actions.length).fill(0);
-
-        if (validTurn) {
-            let nextState = this.getNextState(actions, state)
-
-            newState = nextState.newState;
-            utilities = nextState.utilities;
-        } 
-
-        let outcome = new SimEngineOutcome(validTurn, newState, utilities, actionValidities, 
-            actions);
-
-        return outcome;
-    }
-}
-
-// The RealTimeEngine is identical to the SeqEngine, just with an additional step function
-// which is run after a certain time interval to progress the game forward
-class RealTimeEngine extends SeqEngine {
-    determineOutcome(action, state, playerID) {
-        let validTurn = this.verifyValid(action, state, playerID);
-
-        // Operate on a clone of the state
-        state = _.cloneDeep(state);
-
-        let newState = state; // Leave the state unchanged by default
-        let utilities = new Array(this.totalPlayers).fill(0); // Have 0 utility be default too 
-
-        // Set newState and utilities if the action was valid
-        if(validTurn) {
-            let nextState = this.getNextState(action, state, playerID);
-
-            newState = nextState.newState;
-            utilities = nextState.utilities;
-        }
-
-        let outcome = new RealTimeEngineOutcome(validTurn, newState, utilities, action, playerID,
-            false);
-
-        return outcome;
-    }
-
-    reportStepOutcome(action, newState, utilities) {
-        return new RealTimeEngineOutcome(true, newState,
-            this.expandUtilities(utilities), action, undefined, true); 
-
-    }
-
-    // Function that must be defined by subclasses, advancing the game forward a frame
-    step(state){}
 }
