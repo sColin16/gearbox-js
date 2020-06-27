@@ -32,14 +32,14 @@ class HumanNimPlayer extends AsyncPlayer {
         this.twoButton.disabled = true;
     }
 
-    reportGameStart() {
+    handleGameStart() {
         console.log('Human alerted that the game has started');
     }
 
-    reportOutcome(outcome) {
+    handleOutcome(outcome) {
         // Report if the action was invalid, return early
-        if(!outcome.validTurn) {
-            if(outcome.actionPlayerID.ownAction) {
+        if(!outcome.validity.overall) {
+            if(outcome.action.playerID.isSelf) {
                 this.outcomeDisplay.innerText = 'You made an invalid move';
             } else {
                 this.outcomeDisplay.innerText = 'Your opponent made an invalid move';
@@ -51,16 +51,16 @@ class HumanNimPlayer extends AsyncPlayer {
         // Let the player know which moves were made
         let moveRecord = document.createElement('p');
 
-        if (outcome.actionPlayerID.ownAction) {
-            moveRecord.innerText = `You took ${outcome.action} tokens`;
+        if (outcome.action.playerID.isSelf) {
+            moveRecord.innerText = `You took ${outcome.action.actionRepr} tokens`;
         } else {
-            moveRecord.innerText = `Opponent took ${outcome.action} tokens`;
+            moveRecord.innerText = `Opponent took ${outcome.action.actionRepr} tokens`;
         }
 
         this.moveHistoryDisplay.appendChild(moveRecord);
 
         // Update the number of tokens left
-        this.tokensDisplay.innerText = outcome.newState.numTokens;
+        this.tokensDisplay.innerText = outcome.state.numTokens;
 
         // Report if the game is over
         if(outcome.utilities.personal === 1){
@@ -74,7 +74,7 @@ class HumanNimPlayer extends AsyncPlayer {
         }
     }
 
-    reportGameEnd() {
+    handleGameEnd() {
         console.log('Human alerted that game has ended');
     }
 }

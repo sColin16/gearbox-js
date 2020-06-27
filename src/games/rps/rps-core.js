@@ -1,20 +1,19 @@
 // Engine that handles Rock, Paper, Scisssors Logic
-
 class RPSEngine extends SimEngine {
     // Assign each action a multiple of two so that sums of any two action are unique
     static ROCK     = 1;
     static PAPER    = 2;
     static SCISSORS = 4;
+    static VALID_ACTIONS = ['R', 'P', 'S'];
 
-    // Make 'R', 'P', and 'S' valid actions, use the default verifyValid function
     constructor() {
-        super(['R', 'P', 'S']);
+        super(RPSEngine.VALID_ACTIONS);
     }
 
-    getNextState(actions, state) {
+    processAction(state, actions) {
         // Determine the number (above) associated with each player's move
-        let p1NumAction = 2 ** (['R', 'P', 'S'].indexOf(actions[0]));
-        let p2NumAction = 2 ** (['R', 'P', 'S'].indexOf(actions[1]));
+        let p1NumAction = 2 ** (RPSEngine.VALID_ACTIONS.indexOf(actions.actionRepr[0]));
+        let p2NumAction = 2 ** (RPSEngine.VALID_ACTIONS.indexOf(actions.actionRepr[1]));
 
         // Determine the unique sum that identifies the two moves made
         let actionSum = p1NumAction + p2NumAction;
@@ -40,16 +39,16 @@ class RPSEngine extends SimEngine {
         if (winningMove != 0) {
             let winner = winningMove == p1NumAction ? 0 : 1;
             
-            utilities = this.getUtilities(winner=winner);
+            utilities = this.winnerUtilities(winner);
         }
 
-        // Always return a blank SimState, since RPS is stateless
-        return this.reportOutcome(new SimState(), utilities);
+        // Always return a blank SimState, since RPS is stateless, and undefined stateDelta
+        return this.outcome(utilities, new State(), undefined);
     }
 }
 
 // Helper function to run a game quickly
-function runRPS(player1 = HumanRPSPlayer, player2 = ComputerRPSPlayer) {
+function runRPS(player1=HumanRPSPlayer, player2=ComputerRPSPlayer) {
     let mod = new SimModerator(players=[player1, player2], engine=RPSEngine, state=SimState);
 
     mod.runGame();

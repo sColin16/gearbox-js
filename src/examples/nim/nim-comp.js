@@ -10,25 +10,24 @@ class ComputerNimPlayer extends Player {
         if (state.tokensLeft <= 2) {
             action = state.tokensLeft;
         } else if (state.tokensLeft % 2 === 1) {
-            action = 2;
-        } else {
             action = 1;
+        } else {
+            action = 2;
         }
 
         return action;
     }
 
     // Dummy functions that could be replaced with more advanced things for advanced players
-    reportGameStart() {
+    handleGameStart() {
         console.log('Computer alerted game is starting');
     }
 
-    reportOutcome(outcome) {
-        console.log('Computer alerted of turn outcome');
+    handleOutcome(outcome) {
+        console.log(outcome);
     }
 
-    reportGameEnd() {
+    handleGameEnd() {
         console.log('Computer alerted game is ending');
     }
-
 }

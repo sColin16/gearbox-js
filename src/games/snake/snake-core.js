@@ -84,8 +84,8 @@ class SnakeGameModerator extends RealTimeModerator {
 }
 
 class SnakeEngine extends RealTimeEngine {
-    // Definitions of change to positions for each possible action
-    static DIRECTIONS = {
+    static VALID_ACTIONS = ['UP', 'DOWN', 'RIGHT', 'LEFT'];
+    static DIRECTIONS = {        // Definitions of change to positions for each possible action
         'UP':    {x:  0, y: -1},
         'DOWN':  {x:  0, y:  1},
         'RIGHT': {x:  1, y:  0},
@@ -94,22 +94,22 @@ class SnakeEngine extends RealTimeEngine {
 
     // Also just use the default verifyValid action function
     constructor() {
-        super(['UP', 'DOWN', 'RIGHT', 'LEFT']);
+        super(SnakeEngine.VALID_ACTIONS);
     }
 
     // Updating the state based on the action is purely a matter of changing the direction
-    getNextState(action, state, playerID) {
+    processPlayerAction(state, action) {
         // Deep clone the state using the Lodash library
         let utilities = 0; // No utility for changing direction
 
-        state.direction = action;
+        state.direction = action.actionRepr;
 
-        return this.reportOutcome(state, utilities);
+        return this.outcome(utilities, state, undefined); // No stateDelta for changing dir.
     }
 
     // Steping is more involved, updating positions, heads, tails, and food
-    step(state) {
-        let action = []; // Holds an array of objects marking all x, y coordinate updated
+    processEngineStep(state, action) {
+        let stateDelta = []; // Holds an array of objects marking all x, y coordinate updated
 
         // The change in the coordinates of the head, based on the direction facing
         let deltaX = SnakeEngine.DIRECTIONS[state.direction].x;
@@ -128,19 +128,19 @@ class SnakeEngine extends RealTimeEngine {
                 utilities = [1]; // Get 1 utility if food was eaten
 
                 let {foodX, foodY} = state.addFood();
-                action.push({x: foodX, y: foodY});
+                stateDelta.push({x: foodX, y: foodY});
 
             } else {
                 let {tailX, tailY} = state.removeTail();
-                action.push({x: tailX, y:tailY});
+                stateDelta.push({x: tailX, y:tailY});
             }
 
             // Update the head position last to avoid overwriting the food position too early
             state.updateHead(newHeadX, newHeadY);
-            action.push({x: newHeadX, y: newHeadY});
+            stateDelta.push({x: newHeadX, y: newHeadY});
         }
- 
-        return this.reportStepOutcome(action, state, utilities);
+
+        return this.outcome(utilities, state, stateDelta);
     }
 
     // Helper functions to determine is game over has occrued
@@ -153,7 +153,7 @@ class SnakeEngine extends RealTimeEngine {
     }
 }
 
-function runSnake(player = new HumanSnakePlayer(600), stepFreq = 100, gridSize = 20,
+function runSnake(player = new HumanSnakePlayer(600), stepFreq = 10, gridSize = 20,
     numFood = 1) {
     
     mod = new SnakeGameModerator(player, stepFreq, gridSize, numFood);

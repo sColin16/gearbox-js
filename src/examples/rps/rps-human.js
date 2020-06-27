@@ -20,18 +20,18 @@ class HumanRPSPlayer extends AsyncPlayer {
     }
 
     // Dummy function, could be expanded to prepare page elements
-    reportGameStart() {
+    handleGameStart() {
         console.log('Human alerted that game is starting');
     }
 
     // Primary function to let the human know what just happened
-    reportOutcome(outcome) {
+    handleOutcome(outcome) {
         // Print out the outcome for testing purposes
         console.log(outcome);
 
         // Handle if the turn was valid or not (which doesn't really happen)
-        if (!outcome.validTurn) {
-            if(!outcome.actionValidities.personal) {
+        if (!outcome.validity.overall) {
+            if(!outcome.validity.personal) {
                 this.outcomeDisplay.innerText = 'You made an invalid move';
             } else {
                 this.outcomeDisplay.innerText = 'An opponent made an invalid move';
@@ -41,8 +41,9 @@ class HumanRPSPlayer extends AsyncPlayer {
         }
 
         // Display what move each player made
-        this.p1ActionDisplay.innerText = 'You played ' + outcome.actions.personal;
-        this.p2ActionDisplay.innerText = 'Opponent played ' + outcome.actions.opponents[0];
+        this.p1ActionDisplay.innerText = 'You played ' + outcome.action.actionRepr.personal;
+        this.p2ActionDisplay.innerText = 'Opponent played ' + 
+            outcome.action.actionRepr.opponents[0];
 
         // Report the outcome of that turn
         if(outcome.utilities.personal === 1) {
@@ -55,7 +56,7 @@ class HumanRPSPlayer extends AsyncPlayer {
     }
 
     // Another dummy function where the UI could be updated to alert the human of something
-    reportGameEnd() {
+    handleGameEnd() {
         console.log('Human alerted that game has ended');
     }
 }

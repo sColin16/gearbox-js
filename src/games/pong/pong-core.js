@@ -154,7 +154,8 @@ class PongGameModerator extends RealTimeModerator {
 
     // Hide all actions made by the opponent, to prevent learning the opponent's targets
     hideOutcome(engineOutcome, forPlayerIndex) {
-        return !engineOutcome.engineStep && engineOutcome.actionPlayerID != forPlayerIndex;
+        return !engineOutcome.action.engineStep && 
+            engineOutcome.action.playerID != forPlayerIndex;
     }
 
     // Make the player on the right appear as if on the left, and hide the opponent's target
@@ -196,19 +197,19 @@ class PongGameModerator extends RealTimeModerator {
 }
 
 class PongEngine extends RealTimeEngine {
-    verifyValid(action, state) {
-        return action >= 0 && action <= state.height;
+    validateAction(state, action) {
+        return action.actionRepr >= 0 && action.actionRepr <= state.height;
     }
 
-    getNextState(action, state, playerID) {
+    processPlayerAction(state, action) {
         let utilities = 0;
 
-        state.paddles[playerID].target = action
+        state.paddles[action.playerID].target = action.actionRepr;
 
-        return this.reportOutcome(state, utilities);
+        return this.outcome(utilities, state, undefined);
     }
 
-    step(state) {
+    processEngineStep(state, action) {
         // Update the paddle positions first
         state.updatePaddle(0);
         state.updatePaddle(1);
@@ -217,24 +218,24 @@ class PongEngine extends RealTimeEngine {
         state.ballPos.add(state.ballVel);
 
         // By default, no important changes occured
-        let actions = [];
+        let stateDelta = [];
 
         // Detect and handle bounces on the top or bottom of the screen
         if (state.topBounce()) {
-            actions.push('top-bounce');
+            stateDelta.push('top-bounce');
 
         } else if(state.bottomBounce()) {
-            actions.push('bottom-bounce');
+            stateDelta.push('bottom-bounce');
         }
 
         // Detect and handle bounces on either left or right paddles
         if (state.leftPaddleBounce()) {
-            actions.push('left-bounce');
+            stateDelta.push('left-bounce');
 
             state.spinBall(0);
 
         } else if (state.rightPaddleBounce()) {
-            actions.push('right-bounce');
+            stateDelta.push('right-bounce');
 
             state.spinBall(1);
         }
@@ -243,22 +244,22 @@ class PongEngine extends RealTimeEngine {
 
         // Give a point to a player if the ball left the screen
         if (state.ballPos.x < state.ballSize / 2) {
-            utilities = this.getUtilities(1);
+            utilities = this.winnerUtilities(1);
 
             state.terminalState = true;
 
         } else if (state.ballPos.x > width - state.ballSize / 2) {
-            utilities = this.getUtilities(0);
+            utilities = this.winnerUtilities(0);
 
             state.terminalState = true;
         }
 
-        return this.reportStepOutcome(actions, state, utilities);
+        return this.outcome(utilities, state, stateDelta);
     }
 }
 
 function runPong(player2 = new HumanPongPlayer(), player1 = new ComputerPongPlayer(), 
-        stepFreq=15, width=400, height=400, ballSize = 20, ballVel = 5, ballAngle = 0,
+        stepFreq=30, width=400, height=400, ballSize = 20, ballVel = 5, ballAngle = 0,
         paddleWidth = 10, paddleHeight = 50, paddleEdgeOffset = 30, leftPaddleMaxVel = 10,
         rightPaddleMaxVel = 10, randomSpinWeight = 0, paddleSpinWeight = 0.2) {
     

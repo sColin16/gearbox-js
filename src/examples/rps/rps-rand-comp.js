@@ -5,7 +5,7 @@ class ComputerRPSPlayer extends Player {
 
         // This implementation just chooses a purely random move
         let randomIndex = Math.floor(Math.random() * 3)
-        let move = ['R', 'P', 'S'][randomIndex];
+        let move = RPSEngine.VALID_ACTIONS[randomIndex];
 
         console.log(move);
 
@@ -13,15 +13,15 @@ class ComputerRPSPlayer extends Player {
     }
 
     // Dummy functions, smarter computers could use these to prepare to track patterns
-    reportGameStart() {
+    handleGameStart() {
         console.log('Computer alerted game is starting');
     }
 
-    reportOutcome(outcome) {
+    handleOutcome(outcome) {
         console.log('Computer alerted of turn outcome');
     }
 
-    reportGameEnd() {
+    handleGameEnd() {
         console.log('Computer alerted game is ending');
     }
 }

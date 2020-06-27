@@ -18,7 +18,7 @@ class HumanSnakePlayer extends RealTimePlayer {
     }
 
     // Requires more work to set up everything
-    reportGameStart(state) {
+    handleGameStart(state) {
         // Don't know game size until we recieve the state object
         this.tileWidth = this.canvasSize / state.gridSize;
 
@@ -53,10 +53,10 @@ class HumanSnakePlayer extends RealTimePlayer {
     }
 
     // Update the tiles that were changed, and the score display
-    reportOutcome(outcome) {
-        if(outcome.engineStep) {
-            for (let i = 0; i < outcome.action.length; i++) {
-                this.drawTile(outcome.action[i], outcome.newState);
+    handleOutcome(outcome) {
+        if(outcome.action.engineStep) {
+            for (let i = 0; i < outcome.stateDelta.length; i++) {
+                this.drawTile(outcome.stateDelta[i], outcome.state);
             }
 
             this.scoreDisplay.innerText = int(this.scoreDisplay.innerText) 
@@ -65,7 +65,7 @@ class HumanSnakePlayer extends RealTimePlayer {
     }
 
     // Show a big "Game Over" text on the canvas!
-    reportGameEnd() {
+    handleGameEnd() {
         fill(255);
         textAlign(CENTER, CENTER);
         textSize(this.canvasSize / 6);

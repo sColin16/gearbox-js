@@ -1,7 +1,5 @@
-
-
 class HumanPongPlayer extends RealTimePlayer {
-    reportGameStart(state) {
+    handleGameStart(state) {
         // Tracks if the game is in progress, and actions should be submitted
         this.gameRunning = true;
 
@@ -27,13 +25,13 @@ class HumanPongPlayer extends RealTimePlayer {
         this.drawState(state);
     }
 
-    reportOutcome(outcome) {
-        let state = outcome.newState;
+    handleOutcome(outcome) {
+        let state = outcome.state;
 
         this.drawState(state);
     }
 
-    reportGameEnd() {
+    handleGameEnd() {
         console.log('Player alerted that game is ending');
 
         this.gameRunning = false;

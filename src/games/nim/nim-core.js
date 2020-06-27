@@ -8,16 +8,17 @@ class NimState extends SeqState {
 }
 
 class NimEngine extends SeqEngine {
-    // Use the default verifyValid function to determine what valid actions are
-    // This assumes you can take more than there are, just sets the total left to 0
-    constructor(validActions=[1, 2]) {
-        super(validActions);
+    static VALID_ACTIONS = [1, 2];
+
+    constructor() {
+        super(NimEngine.VALID_ACTIONS);
     }
 
-    getNextState(action, state, playerIndex) {
+    processAction(state, action) {
         // Lets players take more tokens than there are, resulting in 0 tokens left
         // This allows all games, no matter what the validActions are, to end eventually
-        state.numTokens = action > state.tokensLeft ? 0 : state.numTokens - action;
+        state.numTokens = action.actionRepr > state.numTokens ? 
+            0 : state.numTokens - action.actionRepr;
 
         // 0 utilities unless there are no tokens left
         let utilities = 0;
@@ -25,13 +26,13 @@ class NimEngine extends SeqEngine {
         if (state.numTokens === 0){
             state.terminalState = true;
 
-            utilities = this.getUtilities(playerIndex)
+            utilities = this.winnerUtilities(action.playerID);
         }
 
         // Use the helper function to advance the turn
         this.incrementTurn(state);
 
-        return this.reportOutcome(state, utilities);
+        return this.outcome(utilities, state, undefined);
     }
 }
 
