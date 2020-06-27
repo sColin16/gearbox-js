@@ -95,7 +95,7 @@ class SimValidity extends Validity {
 }
 
 class SeqValidity extends Validity{}
-class RealTimeValiditiy extends Validity {}
+class RealTimeValidity extends Validity {}
 
 // Action Classes
 class Action {
@@ -209,7 +209,7 @@ class Engine {
             // Copy the state, so engine base classes can modify it how they see fit
             state = _.cloneDeep(state);
 
-            // Process the action
+            // Process the action (parantheses here are necessary!)
             ({utilities, newState, stateDelta} = this.processAction(state, action));
         }
 
@@ -285,32 +285,28 @@ class SimEngine extends Engine {
 }
 
 class RealTimeEngine extends Engine {
+    validateActionHandler(state, action) {
+        if (action.engineStep) {
+            return new RealTimeValidity(true);
+        }
+
+        return new RealTimeValidity(this.validateAction(state, action));
+    }
+
     // Separates the two types of actions this type of engine might handle
     processAction(state, action) {
         if (action.engineStep) {
-            return this.processEngineStep;
+            return this.processEngineStep(state, action);
         } else {
-            return this.processPlayerAction;
+            return this.processPlayerAction(state, action);
         }
     }
 
     // Function that must be defined by subclasses, advancing the game forward a frame
-    processEngineStep() {}
+    processEngineStep(state, action) {}
 
     // Function that must be defined by subclasses, whenever a player takes an action
-    processPlayerAction() {}
-
-    // Function that should be called by subclasses as the return value in step
-    stepOutcome(actionRepr, utilities, newState, stateDelta) {
-        let validity = new RealTimeValidity(true);
-        
-        // Second arg is playerID, third arg is engineStep
-        let action = new RealTimeAction(actionRepr, undefined, true);
-        
-        utilities = this.expandUtilities(utilities);
-
-        return new EngineOutcome(validity, action, utilities, newState, stateDelta);
-    }
+    processPlayerAction(state, action) {}
 }
 
 // Moderator classes
@@ -338,7 +334,7 @@ class Moderator {
     // TODO: consider providing an optional payload of data that includes the state to players
     startGame() {
         this.players.forEach((player, playerID) => {
-            let stateCopy = _.cloneDeep(this.newState);
+            let stateCopy = _.cloneDeep(this.state);
             let transformedState = this.transformState(stateCopy, playerID);
 
             player.handleGameStart(transformedState);
@@ -549,7 +545,7 @@ class RealTimeModerator extends Moderator {
 
         // If the game is over, report gameover to the players, and cancel the other process
         } else {
-            this.gameEnd();
+            this.endGame();
 
             clearTimeout(this[otherTimeout]);
         }
