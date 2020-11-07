@@ -3,7 +3,7 @@ import {
     assertEquals,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
-import { BareEngine } from "../src/core/engines.js";
+import { BareEngine, SeqEngine } from "../src/core/engines.js";
 import { Validity } from "../src/containers/validities.js";
 import { ProcessedActionOutcome } from "../src/containers/outcomes.js";
 import { State } from "../src/containers/states.js";
@@ -70,4 +70,22 @@ Deno.test("BareEngine abstract methods throw errors if called", () => {
         Error,
         "Abstract method"
     )
+});
+
+Deno.test("SeqEngine incremenet turn increments turn", () => {
+    let engine = new SeqEngine();
+    let state = new State(10, 5, false);
+
+    engine.incrementTurn(state);
+
+    assertEquals(state.turn, 6);
+});
+
+Deno.test("SeqEngine incrementTurn increment turn wraps turn to 0", () => {
+    let engine = new SeqEngine();
+    let state = new State(10, 9, false);
+
+    engine.incrementTurn(state);
+
+    assertEquals(state.turn, 0);
 });

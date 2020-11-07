@@ -84,7 +84,7 @@ export class Engine extends BareEngine {
  * Engine subclass to be used for sequential games. Implements helper functions to streamline subclass development
  * @abstract
  */
-class SeqEngine extends Engine {
+export class SeqEngine extends Engine {
     /**
      * Increments the 'turn' property for the provided state, wrapping back around to 0 as necessary
      * @param {State} state The original state whose turn parameter is to be incremented
