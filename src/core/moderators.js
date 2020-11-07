@@ -6,7 +6,8 @@ import { Player, RealTimePlayer } from './players.js';
 import { Engine } from './engines.js';
 import { State } from '../containers/states.js';
 import { Action } from '../containers/actions.js';
-import { OnewayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
+import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
+import { PlayerOutcome } from "../containers/outcomes.js";
 
 /**
  * Base class for moderators that does not include any pipelines to customize outcomes for each player
@@ -16,14 +17,14 @@ import { OnewayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin
  * @param {Engine} engine - Handles the game logic
  * @param {State} state - Initial game state
  */
-class BareModerator {
+export class BareModerator {
     constructor(players, engine, state) {
         this.players = players;
         this.engine = engine;
         this.state = state;
 
         // Prevent anyone from amking changes to this state
-        //Object.freeze(this.state);
+        Object.freeze(this.state);
     }
 
     /**
@@ -61,6 +62,7 @@ class BareModerator {
         let engineOutcome = this.engine.determineOutcome(this.state, action);
 
         if (typeof engineOutcome.state !== 'undefined') {
+            Object.freeze(engineOutcome.state);
             this.state = engineOutcome.state;
         }
 
@@ -84,9 +86,10 @@ class PlayerModeratorPipe extends Pipe {
     static SECOND_INTERFACE = Player;
 }
 
-PlayerModeratorPipe.addInterfaceMethod(Player, 'handleOutcome', OnewayCollection);
+PlayerModeratorPipe.addInterfaceMethod(Player, 'handleActionRequest', TwowayCollection);
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameStart', OnewayCollection);
-PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameEnd', OnewayCollection);
+PlayerModeratorPipe.addInterfaceMethod(Player, 'handleOutcome', OnewayCollection);
+PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameEnd', OnewayCollection); // Nothing currently passed here...
 
 /**
  * Base class for moderators that does incorporate basic pipes to customize outcomes for each player.
@@ -105,7 +108,12 @@ export class Moderator extends BareModerator {
             let newPipe = new PlayerModeratorPipe();
 
             // Return an array with a single element, according to the Pneumatic API specs
-            newPipe.transformHandleGameStart = (state => [this.transformState(state, i)]);
+            newPipe.transformRequestHandleActionRequest = (state => [this.transformState(state.clone(), i)]);
+            newPipe.transformResponseHandleActionRequest = (actionRepr => this.transformReceiveActionRepr(actionRepr, i));
+
+            // Clone the state so that objects in the pipe can modify it freely
+            newPipe.transformHandleGameStart = (state => [this.transformState(state.clone(), i)]);
+            newPipe.transformHandleOutcome = (outcome => [this.transformOutcome(outcome, i)]);
 
             newPipe.appendToPipeline(Player, players[i]);
 
@@ -120,25 +128,97 @@ export class Moderator extends BareModerator {
         }
     }
 
-    //transformValidity(validity, playerID);
-    //transformAction(action, playerID);
-    //transformUtilities(utilities, playerID);
-
     /**
-     * Changes the state reported to each player
-     * @param {State} state - The state to transform
-     * @param {(number|PlayerIDField)} playerID 
+     * Optional implementation that uses all the transformation functions to transform the complete outcome
+     * @param {EngineOutcome} engineOutcome - The EngineOutcome object to transform
+     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed outcome will be delivered to
+     * @returns {PlayerOutcome}
      */
-    transformState(state, playerID) {
-        throw new Error("Abstract method. Subclasses must override");
+    transformOutcome(engineOutcome, playerID) {
+        // Handle a copy of all the fields, so transform functions don't have to do the copying
+        let outcomeCopy = engineOutcome.clone();
+
+        // Transform all aspects of the outcome
+        let validity = this.transformValidity(outcomeCopy.validity, playerID);
+        let action = this.transformSendAction(outcomeCopy.action, playerID);
+        let utilities = this.transformUtilities(outcomeCopy.utilities, playerID);
+        let state = this.transformState(outcomeCopy.state, playerID);
+        let stateDelta = this.transformStateDelta(outcomeCopy.stateDelta, playerID);
+
+        // Return the transformed outcome
+        return new PlayerOutcome( validity, action, utilities, state, stateDelta);
     }
 
-    //transformStateDelta(stateDelta, playerID);
+    /**
+     * Controls whether or not an engine outcome is reported to each player
+     * @param {EngineOutcome} engineOutcome - The engine outcome to potentially not report to the player
+     * @param {(number|PlayerIDField)} playerID - The playerID that the outcome may or may not be delivered to
+     * @returns {boolean} - Whether or not the outcome is to be hidden from the player
+     */
+    hideOutcome(engineOutcome, playerID) {
+        return true;
+    }
 
-    //hideOutcome(engineOutcome, playerID);
+    /**
+     * Transforms the valdity objects for each outcomes
+     * @param {Validity} validity - The validity object to transform
+     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed validity object is to be delivered to
+     * @returns {Validity} - The transformed validity object
+     */
+    transformValidity(validity, playerID) {
+        return validity;
+    }
 
+    /**
+     * Tranforms action objects for each outcome sent to players
+     * @param {Action} action - The action object to transform
+     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed action is to delivered to
+     * @returns {Action} - The transformed action object
+     */
+    transformSendAction(action, playerID) {
+        return action;
+    }
+
+    /**
+     * Transform action representations recieved from players
+     * @param {*} actionRepr - Action representation returned by the player to be transformed
+     * @param {(number|PlayerIDField)} playerID - The playerID that the action representation is from
+     * @returns {*} The transformed action representation
+     */
+    transformReceiveActionRepr(actionRepr, playerID) {
+        return actionRepr;
+    }
+
+    /**
+     * Transforms a list of utilities for each outcome 
+     * @param {number[]} utilities - The array of utilies to transform
+     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed utility array is to delivered to 
+     * @returns {number[]} - The transformed utility array
+     */
+    transformUtilities(utilities, playerID) {
+        return utilities;
+    }
+
+    /**
+     * Transforms the state reported to each player, when the game starts, and for each outcome
+     * @param {State} state - The state to transform
+     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed state is to be delivered to
+     * @returns {State} - The transformed state
+     */
+    transformState(state, playerID) {
+        return state;
+    }
+
+    /**
+     * Transformed the state delta reported in every outcome
+     * @param {*} stateDelta - The state delta to transform
+     * @param {number|PlayerIDField)} playerID - The playerID that the transformed state delta is to be delivered to
+     * @returns {*} The transformed state delta
+     */
+    transformStateDelta(stateDelta, playerID) {
+        return stateDelta;
+    }
 }
-
 
 /**
  * Moderator class that can be subclassed to support real-time games
@@ -155,4 +235,3 @@ export class RealTimeModerator {
         throw new Error("Not yet implemented");
     }
 };
-
