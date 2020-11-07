@@ -95,35 +95,6 @@ Deno.test("Moderator handleGameStart pipeline can transform state", () => {
 });
 
 Deno.test("Moderator handleOutcome pipeline can transform outcome", () => {
-   let state = new State('a');
-
-    class TestModerator extends Moderator {
-        // Function for testing, that calls handleActionRequest on a player
-        mockActionRequest() {
-            return this.players[0].handleActionRequest(this, state);
-        }
-    }
-
-    let expectedActionRepr = 'valid action';
-
-    class TestPlayer extends Player {
-        handleActionRequest(moderator, state) {
-            return expectedActionRepr;
-        }
-    }
-
-    let player = new TestPlayer();
-    let moderator = new TestModerator([player], new Engine(), new State('b'));
-    let playerHandleActionRequest = spy(player, 'handleActionRequest');
-
-    let actualActionRepr = moderator.mockActionRequest();
-
-    assert(playerHandleActionRequest.calls.length, 1);
-    assertEquals(playerHandleActionRequest.calls[0].args[1], state); // State passed should be unmodified
-    assertEquals(expectedActionRepr, actualActionRepr); // action representation returned should also be unmodified
-});
-
-Deno.test("Moderator handleOutcome pipeline can filter outcome", () => {
     const originalValidity = new Validity(true);
     const originalAction = new Action('a');
     const originalUtilities = [1];
@@ -175,6 +146,31 @@ Deno.test("Moderator handleOutcome pipeline can filter outcome", () => {
 
     assertEquals(playerHandleOutcome.calls.length, 1);
     assertEquals(playerHandleOutcome.calls[0].args[1], transformedOutcome);
+});
+
+Deno.test("Moderator handleOutcome pipeline can filter outcome", () => {
+    const outcome = new EngineOutcome(new Validity(true), new Action(), [1], new State('a'), {}); 
+
+    class TestEngine extends Engine {
+        determineOutcome(state, action) {
+            return outcome;
+        }
+    }
+
+    class TestModerator extends Moderator {
+        hideOutcome(outcome, playerID) {
+            return true;
+        }
+    }
+
+    const player = new Player();
+    const moderator = new TestModerator([player], new TestEngine(), new State('b'));
+
+    let playerHandleOutcome = stub(player, 'handleOutcome');
+
+    moderator.processAndReport();
+
+    assertEquals(playerHandleOutcome.calls.length, 0);
 });
 
 Deno.test("Moderator handleActionRequest pipeline can transform state and action", () => {
