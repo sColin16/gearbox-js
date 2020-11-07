@@ -67,7 +67,7 @@ export class BareModerator {
         }
 
         this.players.forEach((player) => {
-            player.handleOutcome(engineOutcome);
+            player.handleOutcome(this, engineOutcome);
         });
     }
 
@@ -113,7 +113,8 @@ export class Moderator extends BareModerator {
 
             // Clone the state so that objects in the pipe can modify it freely
             newPipe.transformHandleGameStart = (state => [this.transformState(state.clone(), i)]);
-            newPipe.transformHandleOutcome = (outcome => [this.transformOutcome(outcome, i)]);
+            newPipe.transformHandleOutcome = (outcome => {console.log('Arg:' + outcome); [this.transformOutcome(outcome, i)]});
+            newPipe.filterHandleOutcome = (outcome => this.hideOutcome(outcome, i));
 
             newPipe.appendToPipeline(Player, players[i]);
 
@@ -135,6 +136,7 @@ export class Moderator extends BareModerator {
      * @returns {PlayerOutcome}
      */
     transformOutcome(engineOutcome, playerID) {
+        console.log(engineOutcome, playerID);
         // Handle a copy of all the fields, so transform functions don't have to do the copying
         let outcomeCopy = engineOutcome.clone();
 
@@ -146,7 +148,7 @@ export class Moderator extends BareModerator {
         let stateDelta = this.transformStateDelta(outcomeCopy.stateDelta, playerID);
 
         // Return the transformed outcome
-        return new PlayerOutcome( validity, action, utilities, state, stateDelta);
+        return new PlayerOutcome(validity, action, utilities, state, stateDelta);
     }
 
     /**
@@ -156,7 +158,7 @@ export class Moderator extends BareModerator {
      * @returns {boolean} - Whether or not the outcome is to be hidden from the player
      */
     hideOutcome(engineOutcome, playerID) {
-        return true;
+        return false;
     }
 
     /**

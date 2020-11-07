@@ -120,9 +120,9 @@ Deno.test("BareModerator alerts all players of outcome", () => {
     assertEquals(handleOutcome1.calls.length, 1);
     assertEquals(handleOutcome2.calls.length, 1);
     assertEquals(handleOutcome3.calls.length, 1);
-    assertEquals(handleOutcome1.calls[0].args, [outcome]);
-    assertEquals(handleOutcome2.calls[0].args, [outcome]);
-    assertEquals(handleOutcome3.calls[0].args, [outcome]);
+    assertEquals(handleOutcome1.calls[0].args, [moderator, outcome]);
+    assertEquals(handleOutcome2.calls[0].args, [moderator, outcome]);
+    assertEquals(handleOutcome3.calls[0].args, [moderator, outcome]);
 });
 
 Deno.test("BareModerator processAndReport freeze and update state on valid action", () => {
