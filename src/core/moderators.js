@@ -113,7 +113,7 @@ export class Moderator extends BareModerator {
 
             // Clone the state so that objects in the pipe can modify it freely
             newPipe.transformHandleGameStart = (state => [this.transformState(state.clone(), i)]);
-            newPipe.transformHandleOutcome = (outcome => {console.log('Arg:' + outcome); [this.transformOutcome(outcome, i)]});
+            newPipe.transformHandleOutcome = (outcome => [this.transformOutcome(outcome, i)]);
             newPipe.filterHandleOutcome = (outcome => this.hideOutcome(outcome, i));
 
             newPipe.appendToPipeline(Player, players[i]);
@@ -132,11 +132,10 @@ export class Moderator extends BareModerator {
     /**
      * Optional implementation that uses all the transformation functions to transform the complete outcome
      * @param {EngineOutcome} engineOutcome - The EngineOutcome object to transform
-     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed outcome will be delivered to
+     * @param {number} playerID - The playerID that the transformed outcome will be delivered to
      * @returns {PlayerOutcome}
      */
     transformOutcome(engineOutcome, playerID) {
-        console.log(engineOutcome, playerID);
         // Handle a copy of all the fields, so transform functions don't have to do the copying
         let outcomeCopy = engineOutcome.clone();
 
@@ -154,7 +153,7 @@ export class Moderator extends BareModerator {
     /**
      * Controls whether or not an engine outcome is reported to each player
      * @param {EngineOutcome} engineOutcome - The engine outcome to potentially not report to the player
-     * @param {(number|PlayerIDField)} playerID - The playerID that the outcome may or may not be delivered to
+     * @param {number} playerID - The playerID that the outcome may or may not be delivered to
      * @returns {boolean} - Whether or not the outcome is to be hidden from the player
      */
     hideOutcome(engineOutcome, playerID) {
@@ -164,7 +163,7 @@ export class Moderator extends BareModerator {
     /**
      * Transforms the valdity objects for each outcomes
      * @param {Validity} validity - The validity object to transform
-     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed validity object is to be delivered to
+     * @param {number} playerID - The playerID that the transformed validity object is to be delivered to
      * @returns {Validity} - The transformed validity object
      */
     transformValidity(validity, playerID) {
@@ -174,7 +173,7 @@ export class Moderator extends BareModerator {
     /**
      * Tranforms action objects for each outcome sent to players
      * @param {Action} action - The action object to transform
-     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed action is to delivered to
+     * @param {number} playerID - The playerID that the transformed action is to delivered to
      * @returns {Action} - The transformed action object
      */
     transformSendAction(action, playerID) {
@@ -184,7 +183,7 @@ export class Moderator extends BareModerator {
     /**
      * Transform action representations recieved from players
      * @param {*} actionRepr - Action representation returned by the player to be transformed
-     * @param {(number|PlayerIDField)} playerID - The playerID that the action representation is from
+     * @param {number} playerID - The playerID that the action representation is from
      * @returns {*} The transformed action representation
      */
     transformReceiveActionRepr(actionRepr, playerID) {
@@ -194,7 +193,7 @@ export class Moderator extends BareModerator {
     /**
      * Transforms a list of utilities for each outcome 
      * @param {number[]} utilities - The array of utilies to transform
-     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed utility array is to delivered to 
+     * @param {number} playerID - The playerID that the transformed utility array is to delivered to 
      * @returns {number[]} - The transformed utility array
      */
     transformUtilities(utilities, playerID) {
@@ -204,7 +203,7 @@ export class Moderator extends BareModerator {
     /**
      * Transforms the state reported to each player, when the game starts, and for each outcome
      * @param {State} state - The state to transform
-     * @param {(number|PlayerIDField)} playerID - The playerID that the transformed state is to be delivered to
+     * @param {number} playerID - The playerID that the transformed state is to be delivered to
      * @returns {State} - The transformed state
      */
     transformState(state, playerID) {
