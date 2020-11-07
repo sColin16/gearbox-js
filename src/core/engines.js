@@ -134,7 +134,7 @@ export class SimEngine extends Engine {
  * Engine subclass to be used for real-time games. Implements helper functions to streamline subclass development
  * @abstract
  */
-class RealTimeEngine extends Engine {
+export class RealTimeEngine extends Engine {
     /**
      * Optional implementation for subclasses to use to separate processing engine steps and player actions
      * @param {State} state - The state from which to process the action

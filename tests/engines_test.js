@@ -3,11 +3,11 @@ import {
     assertEquals,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
-import { BareEngine, SeqEngine, SimEngine } from "../src/core/engines.js";
-import { Validity } from "../src/containers/validities.js";
-import { ProcessedActionOutcome } from "../src/containers/outcomes.js";
+import { BareEngine, SeqEngine, SimEngine, RealTimeEngine } from "../src/core/engines.js";
+import { RealTimeValidity, Validity } from "../src/containers/validities.js";
+import { EngineOutcome, ProcessedActionOutcome } from "../src/containers/outcomes.js";
 import { State } from "../src/containers/states.js";
-import { Action, SimAction } from "../src/containers/actions.js";
+import { Action, RealTimeAction, SimAction } from "../src/containers/actions.js";
 
 Deno.test("BareEngine determineOutcome reports undefined outcome fields for invalid actions", () => {
     class TestEngine extends BareEngine {
@@ -123,4 +123,90 @@ Deno.test("SimEngine validateActionHelper correctly constructs partially true va
     assert(!validity.individual[0]);
     assert(validity.individual[1]);
     assert(!validity.individual[2]);
+});
+
+Deno.test("RealTimeEngine processAction processes engine step", () => {
+    let mockOutcome = new EngineOutcome();
+
+    class TestEngine extends RealTimeEngine {
+        processEngineStep(state, action) {
+            return mockOutcome;
+        }
+    }
+
+    let engine = new TestEngine();
+    let state = new State();
+    let action = new RealTimeAction('', 0, true);
+
+    let outcome = engine.processAction(state, action);
+
+    assertEquals(outcome, mockOutcome);
+});
+
+Deno.test("RealTimeEngine processAction processes player action", () => {
+    let mockOutcome = new EngineOutcome();
+
+    class TestEngine extends RealTimeEngine {
+        processPlayerAction(state, action) {
+            return mockOutcome;
+        }
+    }
+
+    let engine = new TestEngine();
+    let state = new State();
+    let action = new RealTimeAction('', 0, false);
+
+    let outcome = engine.processAction(state, action);
+
+    assertEquals(outcome, mockOutcome);
+});
+
+Deno.test("RealTimeEngine validateAction validate engine step", () => {
+    let engine = new RealTimeEngine();
+    let state = new State();
+    let action = new RealTimeAction('', 0, true);
+
+    let validity = engine.validateAction(state, action);
+
+    assert(validity.overall);
+});
+
+Deno.test("RealTimeEngine validateAction validates player action", () => {
+    let mockValidity = new RealTimeValidity(false);
+
+    class TestEngine extends RealTimeEngine {
+        validatePlayerAction(state, action) {
+            return mockValidity;
+        }
+    }
+
+    let engine = new TestEngine();
+    let state = new State();
+    let action = new RealTimeAction('', 0, false);
+
+    let validity = engine.validateAction(state, action);
+
+    assertEquals(validity, mockValidity);
+});
+
+Deno.test("RealTimeEngine abstract methods throw errors if called", () => {
+    let testEngine = new RealTimeEngine();
+
+    assertThrows(
+        () => testEngine.processEngineStep(),
+        Error,
+        "Abstract method"
+    )
+
+    assertThrows(
+        () => testEngine.processPlayerAction(),
+        Error,
+        "Abstract method"
+    )
+
+    assertThrows(
+        () => testEngine.validatePlayerAction(),
+        Error,
+        "Abstract method"
+    ) 
 });
