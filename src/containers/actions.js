@@ -10,6 +10,8 @@ import { Cloneable } from './cloneable.js';
  */
 export class Action extends Cloneable {
     constructor(repr) {
+        super();
+        
         this.repr = repr;
     }
 }

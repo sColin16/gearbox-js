@@ -13,6 +13,8 @@ import { Cloneable } from './cloneable.js'
  */
 export class Outcome extends Cloneable {
     constructor(validity, action, utilities, state, stateDelta) {
+        super();
+        
         this.validity = validity;
         this.action = action;
         this.utilities = utilities;

@@ -12,9 +12,9 @@ import { Validity, RealTimeValidity, SimValidity } from "../containers/validitie
  * Low-level base class that defines all required Engine functionality, but does not provide helper functions
  * @abstract
  */
-class BareEngine {
+export class BareEngine {
     /**
-     *  
+     * Optional implementation for the core game-logic-processing of the engine 
      * @param {State} state The state from which to determine the outcome
      * @param {Acition} action The action taken in the given state
      * @returns {EngineOutcome} The outcome from the action being taken
