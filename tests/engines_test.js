@@ -3,11 +3,11 @@ import {
     assertEquals,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
-import { BareEngine, SeqEngine } from "../src/core/engines.js";
+import { BareEngine, SeqEngine, SimEngine } from "../src/core/engines.js";
 import { Validity } from "../src/containers/validities.js";
 import { ProcessedActionOutcome } from "../src/containers/outcomes.js";
 import { State } from "../src/containers/states.js";
-import { Action } from "../src/containers/actions.js";
+import { Action, SimAction } from "../src/containers/actions.js";
 
 Deno.test("BareEngine determineOutcome reports undefined outcome fields for invalid actions", () => {
     class TestEngine extends BareEngine {
@@ -88,4 +88,39 @@ Deno.test("SeqEngine incrementTurn increment turn wraps turn to 0", () => {
     engine.incrementTurn(state);
 
     assertEquals(state.turn, 0);
+});
+
+Deno.test("SimEngine validateActionHelper correctly constructs completly true validity", () => {
+    function testActionValidator(state, actionRepr, playerID) {
+        return actionRepr === 'validAction';
+    }
+
+    let engine = new SimEngine();
+    let state = new State();
+    let action = new SimAction(['validAction', 'validAction', 'validAction']);
+
+    let validity = engine.validateActionHelper(state, action, testActionValidator);
+
+    assert(validity.overall);
+
+    for (let i = 0; i < validity.individual.length; i++) {
+        assert(validity.individual[i]);
+    }
+});
+
+Deno.test("SimEngine validateActionHelper correctly constructs partially true validity", () => {
+    function testActionValidator(state, actionRepr, playerID) {
+        return actionRepr === 'validAction';
+    }
+
+    let engine = new SimEngine();
+    let state = new State();
+    let action = new SimAction(['invalidAction', 'validAction', 'invalidAction']);
+
+    let validity = engine.validateActionHelper(state, action, testActionValidator);
+
+    assert(!validity.overall);
+    assert(!validity.individual[0]);
+    assert(validity.individual[1]);
+    assert(!validity.individual[2]);
 });

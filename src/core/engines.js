@@ -107,7 +107,7 @@ export class SeqEngine extends Engine {
  * Engine subclass to be used for simultaneous games. Implements helper function to streamline subclass development
  * @abstract
  */
-class SimEngine extends Engine {
+export class SimEngine extends Engine {
     /**
      * Function that subclasses can call in their validateAction implementation. Checks that each individual actionRepr is valid for SimAction.
      * This is useful because the validity of an action in a simultaneous game is often independent of the other actions.
@@ -117,7 +117,7 @@ class SimEngine extends Engine {
      * @returns {SimValidity} - Describes the validity of the action in the provided state
      */
     validateActionHelper(state, action, singleActionValidatorCallback) {
-        let validity = new SimValidity(true, new Array(action.actionRepr.length).fill(true));
+        let validity = new SimValidity(true, new Array(action.repr.length).fill(true));
 
         action.repr.forEach((singleActionRepr, i) => {
             if (!singleActionValidatorCallback(state, singleActionRepr, i)) {
