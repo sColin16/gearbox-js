@@ -208,5 +208,5 @@ Deno.test("RealTimeEngine abstract methods throw errors if called", () => {
         () => testEngine.validatePlayerAction(),
         Error,
         "Abstract method"
-    ) 
+    )
 });
