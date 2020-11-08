@@ -1,7 +1,7 @@
 import { Player, RealTimePlayer } from './players.js';
 import { Engine } from './engines.js';
 import { State } from '../containers/states.js';
-import { Action, PlayerIDField } from '../containers/actions.js';
+import { Action, SeqAction, PlayerIDField } from '../containers/actions.js';
 import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
 import { PlayerOutcome } from "../containers/outcomes.js";
 
@@ -136,8 +136,8 @@ export class TransformCollection {
 
             // Clone the state so that objects in the pipe can modify it freely
             newPipe.transformHandleGameStart = (state => [this.transformState(state.clone(), i)]);
-            newPipe.transformHandleOutcome = (outcome => [this.transformOutcome(outcome, i)]);
-            newPipe.filterHandleOutcome = (outcome => this.hideOutcome(outcome, i));
+            newPipe.transformHandleOutcome = (outcome => [this.transformOutcome(outcome.clone(), i)]);
+            newPipe.filterHandleOutcome = (outcome => this.hideOutcome(outcome.clone(), i));
 
             newPipe.appendToPipeline(Player, players[i]);
 
@@ -250,6 +250,8 @@ export class SeqTransformCollection extends TransformCollection {
      * @returns {SeqAction} - The transformed action for the player
      */
     static transformSendAction(action, playerID) {
+        action.playerID = this.adjustPlayerID(playerID, action.playerID);
+
         return action;
     }
 
@@ -260,7 +262,25 @@ export class SeqTransformCollection extends TransformCollection {
      * @returns {SeqState} - The transformed state for the player
      */
     static transformState(state, playerID) {
-        return action;
+        state.turn = this.adjustPlayerID(playerID, state.turn);
+
+        return state;
+    }
+
+        /**
+     * Transforms a given playerID to a PlayerIDField, so outcome field arrays and playerIDs are consistent
+     * @param {number} forPlayerID - The playerID of the player who is to receive the PlayerIDField returned
+     * @param {numer} actionPlayerID - The playerID of the player of interest (took an action, has a turn, etc)
+     * @returns {PlayerIDField} - The actionPlayerID converted to this field, to be provided to the player with id forPlayerID 
+     */
+    static adjustPlayerID(forPlayerID, actionPlayerID) {
+        if (forPlayerID === actionPlayerID) {
+            return new PlayerIDField(true, undefined);
+        } else if (forPlayerID < actionPlayerID) {
+            return new PlayerIDField(false, actionPlayerID - 1);
+        } else {
+            return new PlayerIDField(false, actionPlayerID);
+        }
     }
 }
 
@@ -278,21 +298,18 @@ export class SeqModerator extends Moderator {
     }
 
     /**
-     * Transforms a given playerID to a PlayerIDField, so outcome field arrays and playerIDs are consistent
-     * @param {number} forPlayerID - The playerID of the player who is to receive the PlayerIDField returned
-     * @param {numer} actionPlayerID - The playerID of the player of interest (took an action, has a turn, etc)
-     * @returns {PlayerIDField} - The actionPlayerID converted to this field, to be provided to the player with id forPlayerID 
-     */
-    adjustPlayerID(forPlayerID, actionPlayerID) {
-        return new PlayerIDField(true, 0);
-    }
-
-    /**
      * Runs a single turn of a sequential game.
      * Gets and processes and action from the player whose turn it is
      */
     async runTurn() {
+        // Get the action from the player
+        let actionRepr = await this.players[this.state.turn].handleActionRequest(this, this.state);
 
+        // Package it with the turn
+        let action = new SeqAction(actionRepr, this.state.turn);
+
+        // Run the action through the engine, reporting outcomes, etc.
+        this.processAndReport(action);
     }
 }
 

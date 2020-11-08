@@ -36,6 +36,8 @@ export class SeqAction extends Action {
  */
 export class PlayerIDField extends Cloneable {
     constructor(isSelf, playerID) {
+        super();
+        
         this.isSelf = isSelf;
         this.playerID = playerID;
     }

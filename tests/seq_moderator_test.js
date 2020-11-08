@@ -1,26 +1,30 @@
+import {
+    assertEquals,
+} from "https://deno.land/std/testing/asserts.ts";
+import { stub, spy } from "https://deno.land/x/mock/mod.ts"
 import { PlayerIDField, SeqAction } from "../src/containers/actions.js";
-import { PlayerOutcome } from "../src/containers/outcomes.js";
 import { State } from "../src/containers/states.js";
+import { Engine } from "../src/core/engines.js";
 import { SeqModerator, SeqTransformCollection } from "../src/core/moderators.js";
 import { Player } from "../src/core/players.js";
 
-Deno.test("SeqModerator adjustPlayerID self ID", () => {
+Deno.test("SeqTransformCollection adjustPlayerID self ID", () => {
     let expected = new PlayerIDField(true, undefined);
-    let actual = SeqModerator.adjustPlayerID(3, 3);
+    let actual = SeqTransformCollection.adjustPlayerID(3, 3);
 
     assertEquals(actual, expected);
 });
 
-Deno.test("SeqModerator adjustPlayerID lower forPlayerID", () => {
+Deno.test("SeqTransformCollection adjustPlayerID lower forPlayerID", () => {
     let expected = new PlayerIDField(false, 4);
-    let actual = SeqModerator.adjustPlayerID(2, 5);
+    let actual = SeqTransformCollection.adjustPlayerID(2, 5);
 
     assertEquals(actual, expected);
 });
 
-Deno.test("SeqModerator adjustPlayerID higher forPlayerID", () => {
+Deno.test("SeqTransformCollection adjustPlayerID higher forPlayerID", () => {
     let expected = new PlayerIDField(false, 3);
-    let actual = SeqModerator.adjustPlayerID(6, 3);
+    let actual = SeqTransformCollection.adjustPlayerID(6, 3);
 
     assertEquals(actual, expected);
 });
@@ -41,4 +45,31 @@ Deno.test("SeqTransformCollection transformState correctly transforms state's tu
     let actualTransformedState = SeqTransformCollection.transformState(originalState, 3);
 
     assertEquals(expectedTransformedState, actualTransformedState);
+});
+
+Deno.test("SeqModerator runTurn handles flow correctly", async () => {
+    let player1 = new Player();
+    let player2 = new Player();
+    let player3 = new Player();
+
+    let engine = new Engine();
+    let state = new State(3, 1, false);
+    let moderator = new SeqModerator([player1, player2, player3], engine, state);
+
+    let handleActionRequest1 = stub(player1, 'handleActionRequest');
+    let handleActionRequest2 = stub(player2, 'handleActionRequest', ['myAction']); 
+    let handleActionRequest3 = stub(player3, 'handleActionRequest');
+
+    let processAndReport = stub(moderator, 'processAndReport');
+
+    await moderator.runTurn();
+
+    // Make sure the right player has it's handleActionRequest function called
+    assertEquals(handleActionRequest1.calls.length, 0);
+    assertEquals(handleActionRequest2.calls.length, 1);
+    assertEquals(handleActionRequest3.calls.length, 0);
+
+    // Make sure processAndReport is called with the right action
+    assertEquals(processAndReport.calls.length, 1);
+    assertEquals(processAndReport.calls[0].args[0], new SeqAction('myAction', 1));
 });
