@@ -126,12 +126,7 @@ Deno.test("TransformCollection subclass buildPipes creates handleGameStart trans
 });
 
 Deno.test("TransformCollection subclass buildPipes creates handleOutcome transformation pipeline", () => {
-    const originalValidity = new Validity(true);
-    const originalAction = new Action('a');
-    const originalUtilities = [1];
-    const originalState = new State('a');
-    const originalStateDelta = {'a': 1};
-    const originalOutcome = new EngineOutcome(originalValidity, originalAction, originalUtilities, originalState, originalStateDelta);
+    const originalOutcome = new EngineOutcome(new Validity(true), new Action('a'), [1], new State('a'), {'a': 1});
 
     class TestEngine extends Engine {
         determineOutcome(state, action) {
