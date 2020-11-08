@@ -102,6 +102,28 @@ PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameEnd', OnewayCollection
 export class Moderator extends BareModerator {
     constructor(players, engine, state) {
         let pipes = [];
+        
+        // Create a set of "connectivity pipes" that allow appendToPipeline to fully connect the pipeline
+        // Otherwise, the first subclass that added a pipe would have to manually bind their pipe to the moderator
+        for (let i = 0; i < players.length; i++) {
+            let newPipe = new PlayerModeratorPipe();
+            newPipe.appendToPipeline(Player, players[i]);
+
+            pipes.push(newPipe);
+        }
+
+        super(pipes, engine, state);
+
+        // Attach the moderator to the end of the pipeline AFTER calling super
+        for (let i = 0; i < players.length; i++) {
+            pipes[i].appendToPipeline(BareModerator, this);
+        }
+    }
+}
+
+export class TransformCollection {
+    static buildPipes(players) {
+        let pipes = [];
 
         // Create all basic pipes, allowing for basic transformations to outcomes
         for (let i = 0; i < players.length; i++) {
@@ -121,12 +143,7 @@ export class Moderator extends BareModerator {
             pipes.push(newPipe);
         }
 
-        super(pipes, engine, state);
-
-        // Attach the moderator to the end of the pipeline AFTER calling super
-        for (let i = 0; i < players.length; i++) {
-            pipes[i].appendToPipeline(BareModerator, this);
-        }
+        return pipes
     }
 
     /**
@@ -135,7 +152,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the transformed outcome will be delivered to
      * @returns {PlayerOutcome}
      */
-    transformOutcome(engineOutcome, playerID) {
+    static transformOutcome(engineOutcome, playerID) {
         // Handle a copy of all the fields, so transform functions don't have to do the copying
         let outcomeCopy = engineOutcome.clone();
 
@@ -156,7 +173,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the outcome may or may not be delivered to
      * @returns {boolean} - Whether or not the outcome is to be hidden from the player
      */
-    hideOutcome(engineOutcome, playerID) {
+    static hideOutcome(engineOutcome, playerID) {
         return false;
     }
 
@@ -166,7 +183,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the transformed validity object is to be delivered to
      * @returns {Validity} - The transformed validity object
      */
-    transformValidity(validity, playerID) {
+    static transformValidity(validity, playerID) {
         return validity;
     }
 
@@ -176,7 +193,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the transformed action is to delivered to
      * @returns {Action} - The transformed action object
      */
-    transformSendAction(action, playerID) {
+    static transformSendAction(action, playerID) {
         return action;
     }
 
@@ -186,7 +203,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the action representation is from
      * @returns {*} The transformed action representation
      */
-    transformReceiveActionRepr(actionRepr, playerID) {
+    static transformReceiveActionRepr(actionRepr, playerID) {
         return actionRepr;
     }
 
@@ -196,7 +213,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the transformed utility array is to delivered to 
      * @returns {number[]} - The transformed utility array
      */
-    transformUtilities(utilities, playerID) {
+    static transformUtilities(utilities, playerID) {
         return utilities;
     }
 
@@ -206,7 +223,7 @@ export class Moderator extends BareModerator {
      * @param {number} playerID - The playerID that the transformed state is to be delivered to
      * @returns {State} - The transformed state
      */
-    transformState(state, playerID) {
+    static transformState(state, playerID) {
         return state;
     }
 
@@ -216,7 +233,7 @@ export class Moderator extends BareModerator {
      * @param {number|PlayerIDField)} playerID - The playerID that the transformed state delta is to be delivered to
      * @returns {*} The transformed state delta
      */
-    transformStateDelta(stateDelta, playerID) {
+    static transformStateDelta(stateDelta, playerID) {
         return stateDelta;
     }
 }

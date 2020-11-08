@@ -1,6 +1,7 @@
 import {
     assert,
     assertEquals,
+    assertStrictEquals
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub, spy } from "https://deno.land/x/mock/mod.ts";
 import { Action } from "../src/containers/actions.js";
@@ -8,13 +9,21 @@ import { EngineOutcome, Outcome, PlayerOutcome } from "../src/containers/outcome
 import { State } from "../src/containers/states.js";
 import { Validity } from "../src/containers/validities.js";
 import { Engine } from "../src/core/engines.js";
-import { Moderator } from "../src/core/moderators.js";
+import { Moderator, TransformCollection } from "../src/core/moderators.js";
 import { Player } from "../src/core/players.js";
 
-Deno.test("Moderator default handleGameStart pipeline does not transform state", () => {
+Deno.test("Default TransformCollection buildPipes creates moderator pipeline that does not transform state", () => {
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
+        }
+    }
+
     const player = new Player();
     const state = new State();
-    const moderator = new Moderator([player], new Engine(), state);
+    const moderator = new TestModerator([player], new Engine(), state);
 
     let playerHandleStart = stub(player, 'handleGameStart');
 
@@ -24,7 +33,7 @@ Deno.test("Moderator default handleGameStart pipeline does not transform state",
     assertEquals(playerHandleStart.calls[0].args[1], state);
 });
 
-Deno.test("Moderator default handleOutcome pipeline does not transform or filter outcome", () => {
+Deno.test("TransformCollection buildPipes creates moderator pipeline that does not transform or filter outcome", () => {
     const outcome = new EngineOutcome(new Validity(true), new Action(), [1], new State('a'), {});
 
     class TestEngine extends Engine {
@@ -33,8 +42,16 @@ Deno.test("Moderator default handleOutcome pipeline does not transform or filter
         }
     }
 
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
+        } 
+    }
+
     const player = new Player();
-    const moderator = new Moderator([player], new TestEngine(), new State('b'));
+    const moderator = new TestModerator([player], new TestEngine(), new State('b'));
 
     let playerHandleOutcome = stub(player, 'handleOutcome');
 
@@ -44,10 +61,16 @@ Deno.test("Moderator default handleOutcome pipeline does not transform or filter
     assertEquals(playerHandleOutcome.calls[0].args[1], outcome);
 });
 
-Deno.test("Moderator default handleActionRequest pipeline does not transform state or action", () => {
+Deno.test("TransformCollection buildPipes creates moderator pipeline that does not transform state or action", () => {
     let state = new State('a');
 
     class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
+        }
+
         // Function for testing, that calls handleActionRequest on a player
         mockActionRequest() {
             return this.players[0].handleActionRequest(this, state);
@@ -73,13 +96,21 @@ Deno.test("Moderator default handleActionRequest pipeline does not transform sta
     assertEquals(expectedActionRepr, actualActionRepr); // action representation returned should also be unmodified
 });
 
-Deno.test("Moderator handleGameStart pipeline can transform state", () => {
+Deno.test("TransformCollection subclass buildPipes creates handleGameStart transformation pipeline", () => {
     let originalState = new State('a');
     let transformedState = new State('b');
 
-    class TestModerator extends Moderator {
-        transformState(state, playerID) {
+    class TestTransformCollection extends TransformCollection {
+        static transformState(state, playerID) {
             return transformedState;
+        }
+    }
+
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TestTransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
         }
     }
 
@@ -91,10 +122,10 @@ Deno.test("Moderator handleGameStart pipeline can transform state", () => {
     moderator.startGame();
 
     assertEquals(playerHandleStart.calls.length, 1);
-    assert(playerHandleStart.calls[0].args[1] == transformedState);
+    assertStrictEquals(playerHandleStart.calls[0].args[1], transformedState);
 });
 
-Deno.test("Moderator handleOutcome pipeline can transform outcome", () => {
+Deno.test("TransformCollection subclass buildPipes creates handleOutcome transformation pipeline", () => {
     const originalValidity = new Validity(true);
     const originalAction = new Action('a');
     const originalUtilities = [1];
@@ -115,25 +146,33 @@ Deno.test("Moderator handleOutcome pipeline can transform outcome", () => {
     const transformedStateDelta = {'b': 2};
     const transformedOutcome = new PlayerOutcome(transformedValidity, transformedAction, transformedUtilities, transformedState, transformedStateDelta);
 
-    class TestModerator extends Moderator {
-        transformValidity(validity, playerID) {
+    class TestTransformCollection extends TransformCollection {
+        static transformValidity(validity, playerID) {
             return transformedValidity;
         }
 
-        transformSendAction(action, playerID) {
+        static transformSendAction(action, playerID) {
             return transformedAction;
         }
 
-        transformUtilities(utilities, playerID) {
+        static transformUtilities(utilities, playerID) {
             return transformedUtilities;
         }
 
-        transformState(state, plauerID) {
+        static transformState(state, playerID) {
             return transformedState;
         }
 
-        transformStateDelta(stateDelta, playerID) {
+        static transformStateDelta(stateDelta, playerID) {
             return transformedStateDelta;
+        }
+    }
+
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TestTransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
         }
     }
 
@@ -148,7 +187,7 @@ Deno.test("Moderator handleOutcome pipeline can transform outcome", () => {
     assertEquals(playerHandleOutcome.calls[0].args[1], transformedOutcome);
 });
 
-Deno.test("Moderator handleOutcome pipeline can filter outcome", () => {
+Deno.test("TransformCollection subclass buildPipes creates pipeline to filters outcomes", () => {
     const outcome = new EngineOutcome(new Validity(true), new Action(), [1], new State('a'), {}); 
 
     class TestEngine extends Engine {
@@ -157,10 +196,18 @@ Deno.test("Moderator handleOutcome pipeline can filter outcome", () => {
         }
     }
 
-    class TestModerator extends Moderator {
-        hideOutcome(outcome, playerID) {
+    class TestTransformCollection extends TransformCollection {
+        static hideOutcome(outcome, playerID) {
             return true;
         }
+    }
+
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TestTransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
+        }        
     }
 
     const player = new Player();
@@ -173,7 +220,7 @@ Deno.test("Moderator handleOutcome pipeline can filter outcome", () => {
     assertEquals(playerHandleOutcome.calls.length, 0);
 });
 
-Deno.test("Moderator handleActionRequest pipeline can transform state and action", () => {
+Deno.test("TransformCollection subclass buildPipes creates handleActionRequest transformation pipeline", () => {
     let originalState = new State('a');
     let originalAction = 'original action';
 
@@ -186,18 +233,26 @@ Deno.test("Moderator handleActionRequest pipeline can transform state and action
     let transformedState = new State('b');
     let transformedAction = 'transformed action';
 
-    class TestModerator extends Moderator {
-        // Function for testing, that calls handleActionRequest on a player
-        mockActionRequest() {
-            return this.players[0].handleActionRequest(this, originalState);
-        }
-
-        transformState(state, playerID) {
+    class TestTransformCollection extends TransformCollection {
+        static transformState(state, playerID) {
             return transformedState;
         }
 
-        transformReceiveActionRepr(actionRepr, playerID) {
+        static transformReceiveActionRepr(actionRepr, playerID) {
             return transformedAction;
+        }
+    }
+
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TestTransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
+        }
+
+        // Function for testing, that calls handleActionRequest on a player
+        mockActionRequest() {
+            return this.players[0].handleActionRequest(this, originalState);
         }
     }
 
