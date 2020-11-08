@@ -122,6 +122,11 @@ export class Moderator extends BareModerator {
 }
 
 export class TransformCollection {
+    /**
+     * Uses the transformation functions defined in thie collection to build pipes for each player
+     * @param {(Player[]|Pipe[])} players - Array of players or pipes to reach the players who are playing
+     * @returns {Pipe[]} Array of pipes that can be passed as the players list to the moderator
+     */
     static buildPipes(players) {
         let pipes = [];
 
