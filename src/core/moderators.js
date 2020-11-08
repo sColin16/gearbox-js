@@ -244,6 +244,53 @@ export class TransformCollection {
 }
 
 /**
+ * Defines the transformations that SeqModerators perform to support sequential game play
+ */
+export class SeqTransformCollection extends TransformCollection {
+    /**
+     * Converts the numeric playerID of a SeqAction to a PlayerIDField
+     * @param {SeqAction} action - The action to transform
+     * @param {number} playerID - The player for whom to transform the action for
+     * @returns {SeqAction} - The transformed action for the player
+     */
+    static transformSendAction(action, playerID) {
+        return action;
+    }
+
+    /**
+     * Converts the numeric playerID "turn" to a PlayerIDField
+     * @param {SeqState} state - The state to transform
+     * @param {*} playerID - The player for whom to transform the state for
+     * @returns {SeqState} - The transformed state for the player
+     */
+    static transformState(state, playerID) {
+        return action;
+    }
+}
+
+/**
+ * Special moderator for sequential games, where each player takes a turn in order
+ * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
+ * @param {Engine} engine - Handles the game logic
+ * @param {State} state - Initial game state
+ */
+export class SeqModerator extends Moderator {
+    constructor(players, engine, state) {
+        let pipes = SeqTransformCollection.buildPipes(players);
+
+        super(pipes, engine, state);
+    }
+
+    /**
+     * Runs a single turn of a sequential game.
+     * Gets and processes and action from the player whose turn it is
+     */
+    async runTurn() {
+
+    }
+}
+
+/**
  * Moderator class that can be subclassed to support real-time games
  * @abstract
  */
