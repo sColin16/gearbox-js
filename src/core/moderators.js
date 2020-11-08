@@ -1,11 +1,7 @@
-/**
- * @TODO make sure the moderator freezes the state object once it gets it from the engine, and before it reports it to players
- */
-
 import { Player, RealTimePlayer } from './players.js';
 import { Engine } from './engines.js';
 import { State } from '../containers/states.js';
-import { Action } from '../containers/actions.js';
+import { Action, PlayerIDField } from '../containers/actions.js';
 import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
 import { PlayerOutcome } from "../containers/outcomes.js";
 
@@ -279,6 +275,16 @@ export class SeqModerator extends Moderator {
         let pipes = SeqTransformCollection.buildPipes(players);
 
         super(pipes, engine, state);
+    }
+
+    /**
+     * Transforms a given playerID to a PlayerIDField, so outcome field arrays and playerIDs are consistent
+     * @param {number} forPlayerID - The playerID of the player who is to receive the PlayerIDField returned
+     * @param {numer} actionPlayerID - The playerID of the player of interest (took an action, has a turn, etc)
+     * @returns {PlayerIDField} - The actionPlayerID converted to this field, to be provided to the player with id forPlayerID 
+     */
+    adjustPlayerID(forPlayerID, actionPlayerID) {
+        return new PlayerIDField(true, 0);
     }
 
     /**
