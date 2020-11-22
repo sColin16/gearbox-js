@@ -46,6 +46,10 @@ export class PlayerOutcomeField extends Cloneable {
         this.personal = personal;
         this.opponents = opponents;
     }
+
+    static fromArray(array, playerID) {
+        
+    }
 }
 
  /**

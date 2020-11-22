@@ -288,7 +288,7 @@ export class SeqTransformCollection extends TransformCollection {
  * Special moderator for sequential games, where each player takes a turn in order
  * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
  * @param {Engine} engine - Handles the game logic
- * @param {State} state - Initial game state
+ * @param {SeqState} state - Initial game state
  */
 export class SeqModerator extends Moderator {
     constructor(players, engine, state) {
@@ -310,6 +310,31 @@ export class SeqModerator extends Moderator {
 
         // Run the action through the engine, reporting outcomes, etc.
         this.processAndReport(action);
+    }
+}
+
+export class SimTransformCollection extends TransformCollection {
+    static transformValidity(validity, playerID) {
+
+    }
+    
+    static transformSendAction(action, playerID) {
+
+    }
+}
+
+/**
+ * Moderator superclass that supports simultaneous games, like rock-paper-scissors
+ */
+export class SimModerator extends Moderator {
+    constructor(players, engine, state) {
+        let pipes = SimTransformCollection.buildPipes(players);
+
+        super(pipes, engine, state);
+    }
+
+    async runTurn() {
+
     }
 }
 
