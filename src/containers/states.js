@@ -11,11 +11,22 @@ import { Cloneable } from './cloneable.js';
  * @param {boolean} terminalState - Whether or not this state represents a terminal state for the game
  */
 export class State extends Cloneable {
-    constructor(playerCount, turn, terminalState) {
+    constructor(playerCount, terminalState) {
         super();
         
         this.playerCount = playerCount;
-        this.turn = turn;
         this.terminalState = terminalState;
     }
 }
+
+class TurnBasedState extends State {
+    constructor(playerCount, turn, terminalState) {
+        super(playerCount, terminalState);
+
+        this.turn = turn;
+    }
+}
+
+export class SeqState extends TurnBasedState {};
+export class RealTimeState extends TurnBasedState {};
+export class SimState extends State {};

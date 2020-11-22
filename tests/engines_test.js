@@ -6,7 +6,7 @@ import {
 import { BareEngine, SeqEngine, SimEngine, RealTimeEngine } from "../src/core/engines.js";
 import { RealTimeValidity, Validity } from "../src/containers/validities.js";
 import { EngineOutcome, ProcessedActionOutcome } from "../src/containers/outcomes.js";
-import { State } from "../src/containers/states.js";
+import { State, SeqState, SimState, RealTimeState } from "../src/containers/states.js";
 import { Action, RealTimeAction, SimAction } from "../src/containers/actions.js";
 
 Deno.test("BareEngine determineOutcome reports undefined outcome fields for invalid actions", () => {
@@ -74,7 +74,7 @@ Deno.test("BareEngine abstract methods throw errors if called", () => {
 
 Deno.test("SeqEngine incremenet turn increments turn", () => {
     let engine = new SeqEngine();
-    let state = new State(10, 5, false);
+    let state = new SeqState(10, 5, false);
 
     engine.incrementTurn(state);
 
@@ -83,7 +83,7 @@ Deno.test("SeqEngine incremenet turn increments turn", () => {
 
 Deno.test("SeqEngine incrementTurn increment turn wraps turn to 0", () => {
     let engine = new SeqEngine();
-    let state = new State(10, 9, false);
+    let state = new SeqState(10, 9, false);
 
     engine.incrementTurn(state);
 
@@ -96,7 +96,7 @@ Deno.test("SimEngine validateActionHelper correctly constructs completly true va
     }
 
     let engine = new SimEngine();
-    let state = new State();
+    let state = new SimState();
     let action = new SimAction(['validAction', 'validAction', 'validAction']);
 
     let validity = engine.validateActionHelper(state, action, testActionValidator);
@@ -114,7 +114,7 @@ Deno.test("SimEngine validateActionHelper correctly constructs partially true va
     }
 
     let engine = new SimEngine();
-    let state = new State();
+    let state = new SimState();
     let action = new SimAction(['invalidAction', 'validAction', 'invalidAction']);
 
     let validity = engine.validateActionHelper(state, action, testActionValidator);
@@ -135,7 +135,7 @@ Deno.test("RealTimeEngine processAction processes engine step", () => {
     }
 
     let engine = new TestEngine();
-    let state = new State();
+    let state = new RealTimeState();
     let action = new RealTimeAction('', 0, true);
 
     let outcome = engine.processAction(state, action);
@@ -153,7 +153,7 @@ Deno.test("RealTimeEngine processAction processes player action", () => {
     }
 
     let engine = new TestEngine();
-    let state = new State();
+    let state = new RealTimeState();
     let action = new RealTimeAction('', 0, false);
 
     let outcome = engine.processAction(state, action);
@@ -163,7 +163,7 @@ Deno.test("RealTimeEngine processAction processes player action", () => {
 
 Deno.test("RealTimeEngine validateAction validate engine step", () => {
     let engine = new RealTimeEngine();
-    let state = new State();
+    let state = new RealTimeState();
     let action = new RealTimeAction('', 0, true);
 
     let validity = engine.validateAction(state, action);
@@ -181,7 +181,7 @@ Deno.test("RealTimeEngine validateAction validates player action", () => {
     }
 
     let engine = new TestEngine();
-    let state = new State();
+    let state = new RealTimeState();
     let action = new RealTimeAction('', 0, false);
 
     let validity = engine.validateAction(state, action);
