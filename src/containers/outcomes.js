@@ -43,12 +43,17 @@ export class PlayerOutcome extends Outcome{} // What players are provided. May b
  */
 export class PlayerOutcomeField extends Cloneable {
     constructor(personal, opponents) {
+        super();
+
         this.personal = personal;
         this.opponents = opponents;
     }
 
     static fromArray(array, playerID) {
-        
+        let arrayCopy = array.slice();
+        const personalOutcome = arrayCopy.splice(playerID, 1)[0]; // Extract player's value
+
+        return new PlayerOutcomeField(personalOutcome, arrayCopy);
     }
 }
 

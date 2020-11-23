@@ -1,9 +1,11 @@
 import { Player, RealTimePlayer } from './players.js';
 import { Engine } from './engines.js';
 import { State } from '../containers/states.js';
-import { Action, SeqAction, PlayerIDField } from '../containers/actions.js';
+import { Action, SimAction, SeqAction, PlayerIDField } from '../containers/actions.js';
 import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
-import { PlayerOutcome } from "../containers/outcomes.js";
+import { PlayerOutcome, PlayerOutcomeField } from "../containers/outcomes.js";
+
+// @TODO: should the moderator make sure only copies are handled in the pipeline?
 
 /**
  * Base class for moderators that does not include any pipelines to customize outcomes for each player
@@ -315,11 +317,15 @@ export class SeqModerator extends Moderator {
 
 export class SimTransformCollection extends TransformCollection {
     static transformValidity(validity, playerID) {
+        validity.individual = PlayerOutcomeField.fromArray(validity.individual, playerID);
 
+        return validity;
     }
     
     static transformSendAction(action, playerID) {
+        action.repr = PlayerOutcomeField.fromArray(action.repr, playerID);
 
+        return action;
     }
 }
 
@@ -334,7 +340,12 @@ export class SimModerator extends Moderator {
     }
 
     async runTurn() {
-
+        // Get the action representations from each player
+        let actionRepr = await Promise.all(
+            this.players.map(player => player.handleActionRequest(this, this.state)));
+        
+        // Pass the actions to the engine
+        this.processAndReport(new SimAction(actionRepr));
     }
 }
 

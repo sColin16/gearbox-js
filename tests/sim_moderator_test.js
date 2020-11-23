@@ -1,10 +1,14 @@
 import {
     assertEquals,
 } from "https://deno.land/std/testing/asserts.ts";
+import { stub } from "https://deno.land/x/mock/mod.ts"
 import { SimAction } from "../src/containers/actions.js";
-import { PlayerOutcome, PlayerOutcomeField } from "../src/containers/outcomes.js";
-import { SimValidity, Validity } from "../src/containers/validities.js";
-import { SimTransformCollection } from "../src/core/moderators.js";
+import { PlayerOutcomeField } from "../src/containers/outcomes.js";
+import { SimValidity } from "../src/containers/validities.js";
+import { SimTransformCollection, SimModerator } from "../src/core/moderators.js";
+import { Player } from "../src/core/players.js";
+import { SimEngine } from "../src/core/engines.js";
+import { SimState} from "../src/containers/states.js"
 
 Deno.test("PlayerOutcomeField fromArray creates own instance correctly", () => {
     const initialArray = [1, 2, 3, 4, 5];
@@ -17,7 +21,7 @@ Deno.test("PlayerOutcomeField fromArray creates own instance correctly", () => {
 
 Deno.test("SimTransformCollection transforms action representation into PlayerOutcomeField instance", () => {
     const originalAction = new SimAction([1, 2, 3, 4, 5]);
-    const expectedTransformedAction = new SimAction(new PlayerOutcomeField(4, [1, 2, 3, 4]));
+    const expectedTransformedAction = new SimAction(new PlayerOutcomeField(4, [1, 2, 3, 5]));
 
     const actualTransformedAction = SimTransformCollection.transformSendAction(originalAction, 3);
 
@@ -38,7 +42,7 @@ Deno.test("SimModerator runTurn handles flow correctly", async () => {
     let player2 = new Player();
     let player3 = new Player();
 
-    let engine = new Engine();
+    let engine = new SimEngine();
     let state = new SimState(3, 1, false);
     let moderator = new SimModerator([player1, player2, player3], engine, state);
 
