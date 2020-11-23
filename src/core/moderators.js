@@ -4,8 +4,7 @@ import { State } from '../containers/states.js';
 import { Action, SimAction, SeqAction, PlayerIDField } from '../containers/actions.js';
 import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
 import { PlayerOutcome, PlayerOutcomeField } from "../containers/outcomes.js";
-
-// @TODO: should the moderator make sure only copies are handled in the pipeline?
+import { SimValidity } from "../containers/validities.js";
 
 /**
  * Base class for moderators that does not include any pipelines to customize outcomes for each player
@@ -315,13 +314,28 @@ export class SeqModerator extends Moderator {
     }
 }
 
+/**
+ * Defines the transformations for SimModerators to support simultaneous game play
+ */
 export class SimTransformCollection extends TransformCollection {
+    /**
+     * Transforms the individual validity array into a PlayerOutcomeField
+     * @param {SimValidity} validity - The validity to transform
+     * @param {number} playerID - The ID of the player to whom the validity will be delivered
+     * @returns {SimValidity} - The transformed validity object
+     */
     static transformValidity(validity, playerID) {
         validity.individual = PlayerOutcomeField.fromArray(validity.individual, playerID);
 
         return validity;
     }
     
+    /**
+     * Transforms the action representation array into a PlayerOutcomeField
+     * @param {SimAction} action - The action to transform
+     * @param {number} playerID - The ID of the player to whom the action will be delivered
+     * @returns {SimAction} - The transformed action object
+     */
     static transformSendAction(action, playerID) {
         action.repr = PlayerOutcomeField.fromArray(action.repr, playerID);
 
@@ -330,7 +344,10 @@ export class SimTransformCollection extends TransformCollection {
 }
 
 /**
- * Moderator superclass that supports simultaneous games, like rock-paper-scissors
+ * Moderator superclass that supports simultaneous games, like Rock, Paper, Scissors
+ * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
+ * @param {Engine} engine - Handles the game logic
+ * @param {SimState} state - Initial game state
  */
 export class SimModerator extends Moderator {
     constructor(players, engine, state) {
@@ -339,6 +356,10 @@ export class SimModerator extends Moderator {
         super(pipes, engine, state);
     }
 
+    /**
+     * Runs a single round of the game
+     * Gets an action from each player, and then processes the outcome
+     */
     async runTurn() {
         // Get the action representations from each player
         let actionRepr = await Promise.all(

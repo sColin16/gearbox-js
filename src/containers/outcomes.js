@@ -49,6 +49,12 @@ export class PlayerOutcomeField extends Cloneable {
         this.opponents = opponents;
     }
 
+    /**
+     * Creates a new PlayerOutcomeField from an array that is part of an outcome
+     * @param {Array} array - The array to transform into a PlayerOutcomeField
+     * @param {number} playerID - The index of the player to whom the PlayerOutcomeField will be delivered (defines the "personal" outcome)
+     * @returns {PlayerOutcomeField} - The array transformed into a PlayerOutcomeField
+     */
     static fromArray(array, playerID) {
         let arrayCopy = array.slice();
         const personalOutcome = arrayCopy.splice(playerID, 1)[0]; // Extract player's value

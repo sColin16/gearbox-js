@@ -7,7 +7,7 @@ import { Moderator, RealTimeModerator } from './moderators.js';
  * @todo - make sure the interface for all of these includes the sender part
  * @abstract
  */
-export  class Player {
+export class Player {
     /**
      * Called whenever it is the player's turn
      * @abstract
