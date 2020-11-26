@@ -5,44 +5,46 @@ import { stub } from "https://deno.land/x/mock/mod.ts"
 import { PlayerIDField, SeqAction } from "../src/containers/actions.js";
 import { SeqState } from "../src/containers/states.js";
 import { Engine } from "../src/core/engines.js";
-import { SeqModerator, SeqTransformCollection } from "../src/core/moderators.js";
+import { SeqModerator, IndividualActionTransformCollection } from "../src/core/moderators.js";
 import { Player } from "../src/core/players.js";
 
-Deno.test("SeqTransformCollection adjustPlayerID self ID", () => {
+"IndividualActionTransformCollection"
+
+Deno.test("IndividualActionTransformCollection adjustPlayerID self ID", () => {
     let expected = new PlayerIDField(true, undefined);
-    let actual = SeqTransformCollection.adjustPlayerID(3, 3);
+    let actual = IndividualActionTransformCollection.adjustPlayerID(3, 3);
 
     assertEquals(actual, expected);
 });
 
-Deno.test("SeqTransformCollection adjustPlayerID lower forPlayerID", () => {
+Deno.test("IndividualActionTransformCollection adjustPlayerID lower forPlayerID", () => {
     let expected = new PlayerIDField(false, 4);
-    let actual = SeqTransformCollection.adjustPlayerID(2, 5);
+    let actual = IndividualActionTransformCollection.adjustPlayerID(2, 5);
 
     assertEquals(actual, expected);
 });
 
-Deno.test("SeqTransformCollection adjustPlayerID higher forPlayerID", () => {
+Deno.test("IndividualActionTransformCollection adjustPlayerID higher forPlayerID", () => {
     let expected = new PlayerIDField(false, 3);
-    let actual = SeqTransformCollection.adjustPlayerID(6, 3);
+    let actual = IndividualActionTransformCollection.adjustPlayerID(6, 3);
 
     assertEquals(actual, expected);
 });
 
-Deno.test("SeqTransformCollection transformAction correctly transforms action playerID", () => {
+Deno.test("IndividualActionTransformCollection transformAction correctly transforms action playerID", () => {
     let originalAction = new SeqAction('a', 5);
     let expectedTransformedAction = new SeqAction('a', new PlayerIDField(false, 4));
 
-    let actualTransformedAction = SeqTransformCollection.transformSendAction(originalAction, 2);
+    let actualTransformedAction = IndividualActionTransformCollection.transformSendAction(originalAction, 2);
 
     assertEquals(expectedTransformedAction, actualTransformedAction);
 });
 
-Deno.test("SeqTransformCollection transformState correctly transforms state's turn", () => {
-    let originalState = new SeqState(10, 3, false);
-    let expectedTransformedState = new SeqState(10, new PlayerIDField(true, undefined), false);
+Deno.test("IndividualActionTransformCollection transformState correctly transforms state's turn", () => {
+    let originalState = new SeqState(10, false, 3);
+    let expectedTransformedState = new SeqState(10, false, new PlayerIDField(true, undefined));
 
-    let actualTransformedState = SeqTransformCollection.transformState(originalState, 3);
+    let actualTransformedState = IndividualActionTransformCollection.transformState(originalState, 3);
 
     assertEquals(expectedTransformedState, actualTransformedState);
 });
@@ -53,7 +55,7 @@ Deno.test("SeqModerator runTurn handles flow correctly", async () => {
     let player3 = new Player();
 
     let engine = new Engine();
-    let state = new SeqState(3, 1, false);
+    let state = new SeqState(3, false, 1);
     let moderator = new SeqModerator([player1, player2, player3], engine, state);
 
     let handleActionRequest1 = stub(player1, 'handleActionRequest');

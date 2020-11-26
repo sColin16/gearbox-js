@@ -25,7 +25,7 @@ export class State extends Cloneable {
  * @param {boolean} terminalState - Whether or not this state represents a terminal state for the game
  */
 export class SeqState extends State {
-    constructor(playerCount, turn, terminalState) {
+    constructor(playerCount, terminalState, turn) {
         super(playerCount, terminalState);
 
         this.turn = turn;
@@ -33,7 +33,18 @@ export class SeqState extends State {
 }
 
 /**
+ * Represents the state for real time games, where the interval between engine steps is embeded in the state
+ */
+export class RealTimeState extends State {
+    constructor(playerCount, terminalState, engineStepInterval) {
+        super(playerCount, terminalState);
+
+        this.engineStepInterval = engineStepInterval;
+    }
+};
+
+/**
  * States for RealTime and simultaneous games, which don't require any extra fields
  */
-export class RealTimeState extends State {};
+
 export class SimState extends State {};

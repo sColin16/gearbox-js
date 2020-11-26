@@ -74,7 +74,7 @@ Deno.test("BareEngine abstract methods throw errors if called", () => {
 
 Deno.test("SeqEngine incremenet turn increments turn", () => {
     let engine = new SeqEngine();
-    let state = new SeqState(10, 5, false);
+    let state = new SeqState(10, false, 5);
 
     engine.incrementTurn(state);
 
@@ -83,7 +83,7 @@ Deno.test("SeqEngine incremenet turn increments turn", () => {
 
 Deno.test("SeqEngine incrementTurn increment turn wraps turn to 0", () => {
     let engine = new SeqEngine();
-    let state = new SeqState(10, 9, false);
+    let state = new SeqState(10, false, 9);
 
     engine.incrementTurn(state);
 

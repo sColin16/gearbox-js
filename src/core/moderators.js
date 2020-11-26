@@ -5,6 +5,7 @@ import { Action, SimAction, SeqAction, PlayerIDField } from '../containers/actio
 import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
 import { PlayerOutcome, PlayerOutcomeField } from "../containers/outcomes.js";
 import { SimValidity } from "../containers/validities.js";
+import { Queue } from "./helpers.js";
 
 /**
  * Base class for moderators that does not include any pipelines to customize outcomes for each player
@@ -241,14 +242,15 @@ export class TransformCollection {
 }
 
 /**
- * Defines the transformations that SeqModerators perform to support sequential game play
+ * Superclass for sequential and real-time transformationms, where individual players take actions
+ * playerIDs have to be updated for actions and states
  */
-export class SeqTransformCollection extends TransformCollection {
+export class IndividualActionTransformCollection extends TransformCollection {
     /**
      * Converts the numeric playerID of a SeqAction to a PlayerIDField
-     * @param {SeqAction} action - The action to transform
+     * @param {(SeqAction|RealTimeAction)} action - The action to transform
      * @param {number} playerID - The player for whom to transform the action for
-     * @returns {SeqAction} - The transformed action for the player
+     * @returns {(SeqAction|RealTimeAction)} - The transformed action for the player
      */
     static transformSendAction(action, playerID) {
         action.playerID = this.adjustPlayerID(playerID, action.playerID);
@@ -258,9 +260,9 @@ export class SeqTransformCollection extends TransformCollection {
 
     /**
      * Converts the numeric playerID "turn" to a PlayerIDField
-     * @param {SeqState} state - The state to transform
+     * @param {(SeqState|RealTimeState)} state - The state to transform
      * @param {*} playerID - The player for whom to transform the state for
-     * @returns {SeqState} - The transformed state for the player
+     * @returns {(SeqState|RealTimeState)} - The transformed state for the player
      */
     static transformState(state, playerID) {
         state.turn = this.adjustPlayerID(playerID, state.turn);
@@ -284,6 +286,11 @@ export class SeqTransformCollection extends TransformCollection {
         }
     }
 }
+
+/**
+ * Defines the transformations that SeqModerators perform to support sequential game play
+ */
+export class SeqTransformCollection extends IndividualActionTransformCollection {}
 
 /**
  * Special moderator for sequential games, where each player takes a turn in order
@@ -371,10 +378,71 @@ export class SimModerator extends Moderator {
 }
 
 /**
- * Moderator class that can be subclassed to support real-time games
- * @abstract
+ * Defines the transformations for RealTimeModerators
  */
-export class RealTimeModerator {
+export class RealTimeTransformCollection extends IndividualActionTransformCollection {}
+
+/**
+ * Moderator class that can be subclassed to support real-time games (time advances state instead of player actions)
+ * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
+ * @param {Engine} engine - Handles the game logic
+ * @param {SeqState} state - Initial game state
+ */
+export class RealTimeModerator extends Moderator {
+    constructor(players, engine, state) {
+        let pipes = RealTimeTransformCollection.buildPipes(players);
+
+        super(pipes, engine, state);
+
+        // TODO: bind the moderator to the player? Or find a better way in startGame override?
+
+        this.actionQueue = new Queue();
+
+        this.engineStep.timeout = null;
+        this.processActionQueue.timeout = null;
+    }
+
+    /** 
+     * Overrides the BareModerator's runGame implementation to handle the asynchronous nature of real-time games
+     */
+    async runGame() {
+        // Alert all players the game has started
+
+        // Schedule the first engine step
+
+        // Start processing the action queue
+    }
+
+    /**
+     * Generates and processes an engine step. Called on an interval determined by the state
+     */
+    engineStep() {
+        // create the step action
+
+        // Call process and report for that action
+
+        // Reschedule another step based on the state returned
+    }
+
+    /**
+     * Processes all the actions players submitted to the queue
+     * Since processing an action involves reporting the action, which is a time that players may submit actions,
+     * adding to the queue, and processing the queue are separated into two distinct processes
+     */
+    processActionQueue() {
+        // Keep processing all the original actions in the queue, calling process and report
+
+        // Reschedule the next event, or cancel all other events, depending on 
+    }
+
+    /**
+     * Reschedules the next engine step or action prrocessing step if the stateis not terminal
+     * If a terminal state was reached, cancels all of the timeouts, and ends the game
+     */
+    conditionalReschedule(func, timeoutName, interval) {
+
+    }
+
     /**
      * Real-time interface for a player to take an action.
      * @todo
@@ -382,6 +450,6 @@ export class RealTimeModerator {
      * @param {Action} action - The action taken by the player
      */
     handleAction(player, action) {
-        throw new Error("Not yet implemented");
+
     }
 };

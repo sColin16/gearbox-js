@@ -2,7 +2,7 @@
  * Queue implementation that simply wraps arrays
  * @param {Array} items the initial items in the queue
  */
-class Queue {
+export class Queue {
     constructor(items = []) {
         this.items = items;
     }
