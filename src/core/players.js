@@ -56,7 +56,7 @@ export class Player {
  * Base Class that defines the interface for all Real-Time game players
  * @abstract
  */
-export class RealTimePlayer {
+export class RealTimePlayer extends Player {
     /**
      * Called by moderators to provide players with a reference to the moderator running the game they are participating
      * @param {RealTimeModerator} moderator - The moderator running the game the player is participating in

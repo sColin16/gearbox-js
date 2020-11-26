@@ -1,7 +1,7 @@
 import { Player, RealTimePlayer } from './players.js';
 import { Engine } from './engines.js';
 import { State } from '../containers/states.js';
-import { Action, SimAction, SeqAction, PlayerIDField } from '../containers/actions.js';
+import { Action, SimAction, SeqAction, PlayerIDField, RealTimeAction } from '../containers/actions.js';
 import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
 import { PlayerOutcome, PlayerOutcomeField } from "../containers/outcomes.js";
 import { SimValidity } from "../containers/validities.js";
@@ -88,6 +88,7 @@ PlayerModeratorPipe.addInterfaceMethod(Player, 'handleActionRequest', TwowayColl
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameStart', OnewayCollection);
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleOutcome', OnewayCollection);
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameEnd', OnewayCollection); // Nothing currently passed here...
+PlayerModeratorPipe.addInterfaceMethod(Player, 'bindModerator', OnewayCollection);
 
 /**
  * Base class for moderators that does incorporate basic pipes to customize outcomes for each player.
@@ -394,34 +395,47 @@ export class RealTimeModerator extends Moderator {
 
         super(pipes, engine, state);
 
-        // TODO: bind the moderator to the player? Or find a better way in startGame override?
-
         this.actionQueue = new Queue();
 
         this.engineStep.timeout = null;
         this.processActionQueue.timeout = null;
     }
 
+    /**
+     * Overrides the default startGame function, calling the super method, but also binding moderators for the player
+     */
+    startGame() {
+        super.startGame();
+
+        this.players.forEach(player => player.bindModerator(this));
+    }
+
     /** 
      * Overrides the BareModerator's runGame implementation to handle the asynchronous nature of real-time games
      */
     async runGame() {
-        // Alert all players the game has started
+        // Start the game, alerting all players of the start, and binding the moderator to them
+        this.startGame();
 
         // Schedule the first engine step
+        this.conditionalReschedule(this.engineStep, this.state.engineStepInterval);
 
-        // Start processing the action queue
+        // Start processing any initial actions
+        this.processActionQueue();
     }
 
     /**
      * Generates and processes an engine step. Called on an interval determined by the state
      */
     engineStep() {
-        // create the step action
+        // Create the engine step action
+        let engineAction = new RealTimeAction('engineStep', undefined, true);
 
-        // Call process and report for that action
+        // Process the action
+        this.processAndReport(engineAction);
 
         // Reschedule another step based on the state returned
+        this.conditionalReschedule(this.engineStep, this.state.engineStepInterval);
     }
 
     /**
@@ -430,17 +444,35 @@ export class RealTimeModerator extends Moderator {
      * adding to the queue, and processing the queue are separated into two distinct processes
      */
     processActionQueue() {
-        // Keep processing all the original actions in the queue, calling process and report
+        // Limit numnber of actions processed to number at the start. Otherwise, players could
+        // keep submitting moves, blocking the event queue
+        let actionsProcessed = 0;
+        let actionsToProcess = this.actionQueue.size();
 
-        // Reschedule the next event, or cancel all other events, depending on 
+        // Keep processing until we've done them all (to the limit), or the game ended
+        while(!this.state.terminalState && actionsProcessed < actionsToProcess) {
+            let nextAction = this.actionQueue.dequeue();
+
+            this.processAndReport(nextAction);
+
+            actionsProcessed++;
+        }
+
+        // Schedule another batch, or report gameover
+        this.conditionalReschedule(this.processActionQueue, 0);
     }
 
     /**
      * Reschedules the next engine step or action prrocessing step if the stateis not terminal
      * If a terminal state was reached, cancels all of the timeouts, and ends the game
      */
-    conditionalReschedule(func, timeoutName, interval) {
-
+    conditionalReschedule(func, interval) {
+        if (!this.state.terminalState) {
+            func.timeout = setTimeout(func, interval);
+        } else {
+            clearTimeout(this.engineStep.timeout);
+            clearTimeout(this.processActionQueue.timeout);
+        }
     }
 
     /**
@@ -450,6 +482,8 @@ export class RealTimeModerator extends Moderator {
      * @param {Action} action - The action taken by the player
      */
     handleAction(player, action) {
+        let playerAction = new RealTimeAction(action, this.players.indexOf(player), false);
 
+        this.actionQueue.enqueue(playerAction);
     }
 };
