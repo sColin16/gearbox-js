@@ -89,6 +89,7 @@ PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameStart', OnewayCollecti
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleOutcome', OnewayCollection);
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameEnd', OnewayCollection); // Nothing currently passed here...
 PlayerModeratorPipe.addInterfaceMethod(Player, 'bindModerator', OnewayCollection);
+PlayerModeratorPipe.addInterfaceMethod(BareModerator, 'handleAction', OnewayCollection);
 
 /**
  * Base class for moderators that does incorporate basic pipes to customize outcomes for each player.
@@ -387,7 +388,7 @@ export class RealTimeTransformCollection extends IndividualActionTransformCollec
  * Moderator class that can be subclassed to support real-time games (time advances state instead of player actions)
  * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
  * @param {Engine} engine - Handles the game logic
- * @param {SeqState} state - Initial game state
+ * @param {RealTimeState} state - Initial game state
  */
 export class RealTimeModerator extends Moderator {
     constructor(players, engine, state) {
@@ -467,9 +468,13 @@ export class RealTimeModerator extends Moderator {
      * If a terminal state was reached, cancels all of the timeouts, and ends the game
      */
     conditionalReschedule(func, interval) {
+        // Only reschedule if a terminal state has not been reached
         if (!this.state.terminalState) {
             func.timeout = setTimeout(func, interval);
-        } else {
+        } 
+        
+        // Otherwise, clear both timeouts, so no more engine steps of action processesing occur
+        else {
             clearTimeout(this.engineStep.timeout);
             clearTimeout(this.processActionQueue.timeout);
         }
@@ -477,7 +482,6 @@ export class RealTimeModerator extends Moderator {
 
     /**
      * Real-time interface for a player to take an action.
-     * @todo
      * @param {Player} player - Reference to the player taking the action
      * @param {Action} action - The action taken by the player
      */

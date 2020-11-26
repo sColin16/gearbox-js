@@ -22,9 +22,11 @@ Deno.test("RealTimeModerator startGame alerts player of game start and binds mod
 
     testModerator.startGame();
 
+    // Check that both players received a "handleGameStart" signal
     assertEquals(startGameMockA.calls.length, 1);
     assertEquals(startGameMockB.calls.length, 1);
 
+    // Check that boath players had the moderator binded to them
     assertEquals(bindModeratorMockA.calls.length, 1);
     assertEquals(bindModeratorMockB.calls.length, 1);
 });
@@ -78,16 +80,20 @@ Deno.test("RealTimeModerator processActionQueue stops processing after processin
     const testState = new RealTimeState(2, false, 50)
     const testModerator = new RealTimeModerator([testPlayerA, testPlayerB], new RealTimeEngine, testState);
 
-    // Submit 2 actions to the queue
-    testModerator.handleAction(testModerator.players[1], 'processAction1');
-    testModerator.handleAction(testModerator.players[1], 'processAction2');
-
-    // Don't allow action processing to be rescheduled
+    // Don't allow action processing to be rescheduled, or gmae starts to be handled
     stub(testModerator, 'conditionalReschedule');
-    
+    stub(testPlayerA, 'handleGameStart');
+    stub(testPlayerB, 'handleGameStart');
+
+    testModerator.startGame();
+
+    // Submit 2 actions to the queue (use player array to submit action through pipe)
+    testPlayerB.takeAction('processAction1');
+    testPlayerB.takeAction('processAction2');
+
     // processAndReport submits a new action to the queue (which shouldn't be processed)
     const processReportMock = stub(testModerator, 'processAndReport', () => {
-        testModerator.handleAction(testModerator.players[0], 'extraAction');
+        testPlayerA.takeAction('extraAction');
     });
 
     testModerator.processActionQueue();
@@ -111,9 +117,15 @@ Deno.test("RealTimeModerator processActionQueue stops processing on terminal sta
     const testState = new RealTimeState(2, false, 50)
     const testModerator = new RealTimeModerator([testPlayerA, testPlayerB], new RealTimeEngine, testState);
 
+    // Mock out the handleGameStart function so it doens't have to be defined
+    stub(testPlayerA, 'handleGameStart');
+    stub(testPlayerB, 'handleGameStart');
+
+    testModerator.startGame();
+
     // Submit 2 actions to the queue
-    testModerator.handleAction(testModerator.players[1], 'processAction');
-    testModerator.handleAction(testModerator.players[0], 'extraAction');
+    testPlayerB.takeAction('processAction');
+    testPlayerA.takeAction('extraAction');
 
     // processAndReport causes a terminal state
     const processReportMock = stub(testModerator, 'processAndReport', () => {
@@ -167,8 +179,15 @@ Deno.test("RealTimeModerator handleAction adds action to queue", () => {
     const testPlayerB = new RealTimePlayer();
     const testModerator = new RealTimeModerator([testPlayerA, testPlayerB], new RealTimeEngine(), new RealTimeState());
 
-    testModerator.handleAction(testModerator.players[1], 'testAction');
+    // Mock out the handleGameStart function so it doens't have to be defined
+    stub(testPlayerA, 'handleGameStart');
+    stub(testPlayerB, 'handleGameStart');
 
+    testModerator.startGame();
+
+    testPlayerB.takeAction('testAction');
+
+    // Check that the function wraps the action into a RealTimeAction instance
     const expectedAction = new RealTimeAction('testAction', 1, false);
     const actualAction = testModerator.actionQueue.dequeue();
 

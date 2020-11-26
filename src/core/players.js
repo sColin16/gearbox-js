@@ -72,7 +72,7 @@ export class RealTimePlayer extends Player {
      * @param {*} actionRepr - Action representation the player wishes to make
      */
     takeAction(actionRepr) {
-        this.moderator.handleAction(action, this);
+        this.moderator.handleAction(this, actionRepr);
     }
 }
 
