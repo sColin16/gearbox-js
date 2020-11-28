@@ -41,7 +41,7 @@ export class Queue {
  * Simple helper function to simulate delays
  * @param {number} ms Number of silliseconds to delay
  */
-async function delay(ms) {
+export async function delay(ms) {
     return new Promise(function(resolve, reject) {
         setTimeout(resolve, ms);
     });

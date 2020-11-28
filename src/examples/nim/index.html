@@ -2,14 +2,15 @@
 
 <html>
     <head>
-        <!-- Lodash is used for deep cloning the states -->
-        <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
-        <script type='text/javascript' src='/src/core/core.js'></script>
-        <script type='text/javascript' src='/src/games/nim/nim-core.js'></script>
-        <script type='text/javascript' src='/src/examples/nim/nim-human.js'></script>
-        <script type='text/javascript' src='/src/examples/nim/nim-comp.js'></script>
-        <script type='text/javascript'>
-            window.onload = () => runNim();
+        <script type='module'>
+            import { runNim } from "/src/games/nim.js";
+            import { HumanNimPlayer } from "/src/examples/nim/nim-human.js";
+            import { ComputerNimPlayer } from "/src/examples/nim/nim-comp.js"
+
+            let player1 = new HumanNimPlayer();
+            let player2 = new ComputerNimPlayer();
+
+            window.onload = () => runNim(player1, player2, 17);
         </script>
     </head>
 
@@ -26,6 +27,5 @@
 
         <div id='move-history-display'></div>
     </body>
-
 </html>
 

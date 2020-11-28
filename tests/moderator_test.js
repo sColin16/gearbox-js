@@ -5,7 +5,7 @@ import {
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub, spy } from "https://deno.land/x/mock/mod.ts";
 import { Action } from "../src/containers/actions.js";
-import { EngineOutcome, Outcome, PlayerOutcome } from "../src/containers/outcomes.js";
+import { EngineOutcome, Outcome, PlayerOutcome, PlayerOutcomeField } from "../src/containers/outcomes.js";
 import { State } from "../src/containers/states.js";
 import { Validity } from "../src/containers/validities.js";
 import { Engine } from "../src/core/engines.js";
@@ -33,8 +33,8 @@ Deno.test("Default TransformCollection buildPipes creates moderator pipeline tha
     assertEquals(playerHandleStart.calls[0].args[1], state);
 });
 
-Deno.test("TransformCollection buildPipes creates moderator pipeline that does not transform or filter outcome", () => {
-    const outcome = new EngineOutcome(new Validity(true), new Action(), [1], new State('a'), {});
+Deno.test("TransformCollection buildPipes creates moderator pipeline that does not transform or filter outcome, except utilities", () => {
+    const outcome = new EngineOutcome(new Validity(true), new Action(), [1, 2, 3], new State('a'), {});
 
     class TestEngine extends Engine {
         determineOutcome(state, action) {
@@ -55,10 +55,12 @@ Deno.test("TransformCollection buildPipes creates moderator pipeline that does n
 
     let playerHandleOutcome = stub(player, 'handleOutcome');
 
+    const expectedOutcome = new EngineOutcome(new Validity(true), new Action(), new PlayerOutcomeField(1, [2, 3]), new State('a'), {});
+
     moderator.processAndReport();
 
     assertEquals(playerHandleOutcome.calls.length, 1);
-    assertEquals(playerHandleOutcome.calls[0].args[1], outcome);
+    assertEquals(playerHandleOutcome.calls[0].args[1], expectedOutcome);
 });
 
 Deno.test("TransformCollection buildPipes creates moderator pipeline that does not transform state or action", () => {
