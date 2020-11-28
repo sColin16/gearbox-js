@@ -1,6 +1,8 @@
+import { AsyncPlayer } from "../../core/players.js";
+
 // Class that implements the gearbox API to let a human play Rock, Paper, Scissors in the browser
 // Note that this class must be coupled to elements on the webpage
-class HumanRPSPlayer extends AsyncPlayer {
+export class HumanRPSPlayer extends AsyncPlayer {
     constructor() {
         super();
 
@@ -19,15 +21,17 @@ class HumanRPSPlayer extends AsyncPlayer {
         this.scissorsButton.addEventListener('click', () => this.takeAction('S'));
     }
 
+    startTurnActions(state) {}
+
+    endTurnActions(state) {}
+
     // Dummy function, could be expanded to prepare page elements
-    handleGameStart() {
-        console.log('Human alerted that game is starting');
-    }
+    handleGameStart(moderator, state) {}
 
     // Primary function to let the human know what just happened
-    handleOutcome(outcome) {
+    handleOutcome(moderator, outcome) {
         // Print out the outcome for testing purposes
-        console.log(outcome);
+        console.log('Turn outcome', outcome);
 
         // Handle if the turn was valid or not (which doesn't really happen)
         if (!outcome.validity.overall) {
@@ -41,9 +45,9 @@ class HumanRPSPlayer extends AsyncPlayer {
         }
 
         // Display what move each player made
-        this.p1ActionDisplay.innerText = 'You played ' + outcome.action.actionRepr.personal;
+        this.p1ActionDisplay.innerText = 'You played ' + outcome.action.repr.personal;
         this.p2ActionDisplay.innerText = 'Opponent played ' + 
-            outcome.action.actionRepr.opponents[0];
+            outcome.action.repr.opponents[0];
 
         // Report the outcome of that turn
         if(outcome.utilities.personal === 1) {
@@ -56,7 +60,5 @@ class HumanRPSPlayer extends AsyncPlayer {
     }
 
     // Another dummy function where the UI could be updated to alert the human of something
-    handleGameEnd() {
-        console.log('Human alerted that game has ended');
-    }
+    handleGameEnd() {}
 }

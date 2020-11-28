@@ -80,12 +80,12 @@ export class RealTimePlayer extends Player {
  * Base class for asychronous simulataneous and sequential game players (e.g. humans, network players)
  * Provides a simplified asyc interface to integreate with the synchronous moderators
  */
-class AsyncPlayer extends Player {
+export class AsyncPlayer extends Player {
     /**
      * Implements the Player's getAction method. Player should call takeAction(actionRepr) to take an action
      * @param {State} state - The state from which the action should be decided
      */
-    async getAction(state) {
+    async handleActionRequest(moderator, state) {
         this.startTurnActions(state);
 
         // Return a promise, which will resolve when the player runs the function takeAction

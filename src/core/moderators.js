@@ -2,7 +2,7 @@ import { Player, RealTimePlayer } from './players.js';
 import { Engine } from './engines.js';
 import { State } from '../containers/states.js';
 import { Action, SimAction, SeqAction, PlayerIDField, RealTimeAction } from '../containers/actions.js';
-import { OnewayCollection, TwowayCollection, Pipe } from 'https://raw.githubusercontent.com/sColin16/pneumatic-js/master/index.js';
+import { OnewayCollection, TwowayCollection, Pipe } from 'http://cdn.jsdelivr.net/gh/sColin16/pneumatic-js@376895/index.js';
 import { PlayerOutcome, PlayerOutcomeField } from "../containers/outcomes.js";
 import { SimValidity } from "../containers/validities.js";
 import { Queue } from "./helpers.js";
@@ -88,38 +88,10 @@ PlayerModeratorPipe.addInterfaceMethod(Player, 'handleActionRequest', TwowayColl
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameStart', OnewayCollection);
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleOutcome', OnewayCollection);
 PlayerModeratorPipe.addInterfaceMethod(Player, 'handleGameEnd', OnewayCollection); // Nothing currently passed here...
+
+// TODO: should these be in a a separate pipe for RealTimeModerators?
 PlayerModeratorPipe.addInterfaceMethod(Player, 'bindModerator', OnewayCollection);
 PlayerModeratorPipe.addInterfaceMethod(BareModerator, 'handleAction', OnewayCollection);
-
-/**
- * Base class for moderators that does incorporate basic pipes to customize outcomes for each player.
- * Most subclasses should extend this class, not BareModerator
- * @abstract
- * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
- * @param {Engine} engine - Handles the game logic
- * @param {State} state - Initial game state 
- */
-export class Moderator extends BareModerator {
-    constructor(players, engine, state) {
-        let pipes = [];
-        
-        // Create a set of "connectivity pipes" that allow appendToPipeline to fully connect the pipeline
-        // Otherwise, the first subclass that added a pipe would have to manually bind their pipe to the moderator
-        for (let i = 0; i < players.length; i++) {
-            let newPipe = new PlayerModeratorPipe();
-            newPipe.appendToPipeline(Player, players[i]);
-
-            pipes.push(newPipe);
-        }
-
-        super(pipes, engine, state);
-
-        // Attach the moderator to the end of the pipeline AFTER calling super
-        for (let i = 0; i < players.length; i++) {
-            pipes[i].appendToPipeline(BareModerator, this);
-        }
-    }
-}
 
 export class TransformCollection {
     /**
@@ -240,6 +212,43 @@ export class TransformCollection {
      */
     static transformStateDelta(stateDelta, playerID) {
         return stateDelta;
+    }
+}
+
+/**
+ * Defines transformations that are applied to all moderators
+ */
+class DefaultTransformCollection extends TransformCollection {
+    /**
+     * Transforms the utility array into a playerID field for each player
+     * @param {number[]} utilities - The array of utilies to transform
+     * @param {number} playerID - The playerID that the transformed utility array is to delivered to 
+     * @returns {PlayerOutcomeField} - The transformed utility array
+     */
+    static transformUtilities(utilities, playerID) {
+        return PlayerOutcomeField.fromArray(utilities, playerID);
+    }
+}
+
+/**
+ * Base class for moderators that does incorporate basic pipes to customize outcomes for each player.
+ * Most subclasses should extend this class, not BareModerator
+ * @abstract
+ * @param {(Player[]|Pipe[])} players - The players, or pipelines to players, who are playing the game
+ * @param {Engine} engine - Handles the game logic
+ * @param {State} state - Initial game state
+ */
+export class Moderator extends BareModerator {
+    constructor(players, engine, state) {
+        let pipes = DefaultTransformCollection.buildPipes(players);
+
+        super(pipes, engine, state);
+
+        // Attach the moderator to the end of the pipeline AFTER calling super
+        // b/c you can't reference this until after calling super
+        for (let i = 0; i < players.length; i++) {
+            pipes[i].appendToPipeline(BareModerator, this);
+        }
     }
 }
 

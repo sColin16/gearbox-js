@@ -2,14 +2,15 @@
 
 <html>
     <head>
-        <!-- Lodash is used for deep cloning the states -->
-        <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
-        <script type='text/javascript' src='/src/core/core.js'></script>
-        <script type='text/javascript' src='/src/games/rps/rps-core.js'></script>
-        <script type='text/javascript' src='/src/examples/rps/rps-human.js'></script>
-        <script type='text/javascript' src='/src/examples/rps/rps-rand-comp.js'></script>
-        <script type='text/javascript'>
-            window.onload = () => runRPS();
+        <script type='module'>
+            import { runRPS } from '/src/games/rps.js';
+            import { HumanRPSPlayer } from '/src/examples/rps/rps-human.js';
+            import { ComputerRPSPlayer } from '/src/examples/rps/rps-rand-comp.js';
+
+            let player1 = new HumanRPSPlayer();
+            let player2 = new ComputerRPSPlayer();
+
+            window.onload = () => runRPS(player1, player2);
         </script>
     </head>
     <body>
@@ -22,7 +23,6 @@
         <p id='p1-action-display'></p>
         <p id='p2-action-display'></p>
         <p id='outcome-display'></p>
-
     </body>
 </html>
 
