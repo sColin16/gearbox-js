@@ -2,13 +2,13 @@ import {
     assertEquals,
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub } from "https://deno.land/x/mock/mod.ts"
-import { SimAction } from "../src/containers/actions.js";
-import { PlayerOutcomeField } from "../src/containers/outcomes.js";
-import { SimValidity } from "../src/containers/validities.js";
-import { SimTransformCollection, SimModerator } from "../src/core/moderators.js";
-import { Player } from "../src/core/players.js";
-import { SimEngine } from "../src/core/engines.js";
-import { SimState} from "../src/containers/states.js"
+import { SimAction } from "../../src/containers/actions.js";
+import { PlayerOutcomeField } from "../../src/containers/outcomes.js";
+import { SimValidity } from "../../src/containers/validities.js";
+import { SimTransformCollection, SimModerator } from "../../src/core/moderators.js";
+import { Player } from "../../src/core/players.js";
+import { SimEngine } from "../../src/core/engines.js";
+import { SimState} from "../../src/containers/states.js"
 
 Deno.test("PlayerOutcomeField fromArray creates own instance correctly", () => {
     const initialArray = [1, 2, 3, 4, 5];

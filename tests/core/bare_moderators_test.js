@@ -4,13 +4,13 @@ import {
     assertThrowsAsync,
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub, spy } from "https://deno.land/x/mock/mod.ts"
-import { Action } from "../src/containers/actions.js";
-import { EngineOutcome } from "../src/containers/outcomes.js";
-import { State } from "../src/containers/states.js";
-import { Validity } from "../src/containers/validities.js";
-import { Engine } from "../src/core/engines.js";
-import { BareModerator } from "../src/core/moderators.js";
-import { Player } from "../src/core/players.js";
+import { Action } from "../../src/containers/actions.js";
+import { EngineOutcome } from "../../src/containers/outcomes.js";
+import { State } from "../../src/containers/states.js";
+import { Validity } from "../../src/containers/validities.js";
+import { Engine } from "../../src/core/engines.js";
+import { BareModerator } from "../../src/core/moderators.js";
+import { Player } from "../../src/core/players.js";
 
 Deno.test("BareModerator freezes initial state", () => {
     let state = new State();

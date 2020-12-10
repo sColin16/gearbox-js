@@ -4,13 +4,13 @@ import {
     assertStrictEquals
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub, spy } from "https://deno.land/x/mock/mod.ts";
-import { Action } from "../src/containers/actions.js";
-import { EngineOutcome, Outcome, PlayerOutcome, PlayerOutcomeField } from "../src/containers/outcomes.js";
-import { State } from "../src/containers/states.js";
-import { Validity } from "../src/containers/validities.js";
-import { Engine } from "../src/core/engines.js";
-import { Moderator, TransformCollection } from "../src/core/moderators.js";
-import { Player } from "../src/core/players.js";
+import { Action } from "../../src/containers/actions.js";
+import { EngineOutcome, Outcome, PlayerOutcome, PlayerOutcomeField } from "../../src/containers/outcomes.js";
+import { State } from "../../src/containers/states.js";
+import { Validity } from "../../src/containers/validities.js";
+import { Engine } from "../../src/core/engines.js";
+import { Moderator, TransformCollection } from "../../src/core/moderators.js";
+import { Player } from "../../src/core/players.js";
 
 Deno.test("Default TransformCollection buildPipes creates moderator pipeline that does not transform state", () => {
     class TestModerator extends Moderator {

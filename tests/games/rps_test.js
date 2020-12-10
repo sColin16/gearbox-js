@@ -2,8 +2,8 @@ import {
     assert,
     assertEquals
 } from "https://deno.land/std/testing/asserts.ts";
-import { SimAction } from "../src/containers/actions.js";
-import { RPSEngine } from "../src/games/rps.js";
+import { SimAction } from "../../src/containers/actions.js";
+import { RPSEngine } from "../../src/games/rps.js";
 
 Deno.test("RPSEngine singleActionValidator detects invalid actions", () => {
     const testEngine = new RPSEngine();

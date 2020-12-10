@@ -2,11 +2,11 @@ import {
     assertEquals,
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub } from "https://deno.land/x/mock/mod.ts"
-import { PlayerIDField, SeqAction } from "../src/containers/actions.js";
-import { SeqState } from "../src/containers/states.js";
-import { Engine } from "../src/core/engines.js";
-import { SeqModerator, IndividualActionTransformCollection } from "../src/core/moderators.js";
-import { Player } from "../src/core/players.js";
+import { PlayerIDField, SeqAction } from "../../src/containers/actions.js";
+import { SeqState } from "../../src/containers/states.js";
+import { Engine } from "../../src/core/engines.js";
+import { SeqModerator, IndividualActionTransformCollection } from "../../src/core/moderators.js";
+import { Player } from "../../src/core/players.js";
 
 "IndividualActionTransformCollection"
 

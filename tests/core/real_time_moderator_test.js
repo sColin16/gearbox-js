@@ -2,11 +2,11 @@ import {
     assertEquals,
 } from "https://deno.land/std/testing/asserts.ts";
 import { stub } from "https://deno.land/x/mock/mod.ts"
-import { RealTimeAction } from "../src/containers/actions.js";
-import { RealTimeState } from "../src/containers/states.js";
-import { RealTimeEngine } from "../src/core/engines.js";
-import { RealTimeModerator } from "../src/core/moderators.js";
-import { RealTimePlayer } from "../src/core/players.js";
+import { RealTimeAction } from "../../src/containers/actions.js";
+import { RealTimeState } from "../../src/containers/states.js";
+import { RealTimeEngine } from "../../src/core/engines.js";
+import { RealTimeModerator } from "../../src/core/moderators.js";
+import { RealTimePlayer } from "../../src/core/players.js";
 
 Deno.test("RealTimeModerator startGame alerts player of game start and binds moderator", () => {
     const testPlayerA = new RealTimePlayer();

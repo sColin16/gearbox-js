@@ -3,11 +3,11 @@ import {
     assertEquals,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
-import { BareEngine, SeqEngine, SimEngine, RealTimeEngine } from "../src/core/engines.js";
-import { RealTimeValidity, Validity } from "../src/containers/validities.js";
-import { EngineOutcome, ProcessedActionOutcome } from "../src/containers/outcomes.js";
-import { State, SeqState, SimState, RealTimeState } from "../src/containers/states.js";
-import { Action, RealTimeAction, SimAction } from "../src/containers/actions.js";
+import { BareEngine, SeqEngine, SimEngine, RealTimeEngine } from "../../src/core/engines.js";
+import { RealTimeValidity, Validity } from "../../src/containers/validities.js";
+import { EngineOutcome, ProcessedActionOutcome } from "../../src/containers/outcomes.js";
+import { State, SeqState, SimState, RealTimeState } from "../../src/containers/states.js";
+import { Action, RealTimeAction, SimAction } from "../../src/containers/actions.js";
 
 Deno.test("BareEngine determineOutcome reports undefined outcome fields for invalid actions", () => {
     class TestEngine extends BareEngine {

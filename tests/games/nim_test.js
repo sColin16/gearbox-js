@@ -2,8 +2,8 @@ import {
     assert,
     assertEquals
 } from "https://deno.land/std/testing/asserts.ts";
-import { SeqAction } from "../src/containers/actions.js";
-import { NimEngine, NimState } from "../src/games/nim.js";
+import { SeqAction } from "../../src/containers/actions.js";
+import { NimEngine, NimState } from "../../src/games/nim.js";
 
 Deno.test("NimEngine validateAction detects invalid actions", () => {
     const testEngine = new NimEngine();
