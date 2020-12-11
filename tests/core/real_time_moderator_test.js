@@ -117,9 +117,11 @@ Deno.test("RealTimeModerator processActionQueue stops processing on terminal sta
     const testState = new RealTimeState(2, false, 50)
     const testModerator = new RealTimeModerator([testPlayerA, testPlayerB], new RealTimeEngine, testState);
 
-    // Mock out the handleGameStart function so it doens't have to be defined
+    // Mock out the handleGameStart and End functions so it doens't have to be defined
     stub(testPlayerA, 'handleGameStart');
     stub(testPlayerB, 'handleGameStart');
+    stub(testPlayerA, 'handleGameEnd');
+    stub(testPlayerB, 'handleGameEnd');
 
     testModerator.startGame();
 
@@ -154,14 +156,16 @@ Deno.test("RealTimeModerator conditionalReschedule reschedules step on non-termi
 
     // Check that the engine step was scheduled again
     assertEquals(setTimeoutMock.calls.length, 1);
-    assertEquals(setTimeoutMock.calls[0].args, [testModerator.engineStep, 100]);
+    assertEquals(setTimeoutMock.calls[0].args[0].name, 'bound engineStep') // Best I can do to verify bound function called
+    assertEquals(setTimeoutMock.calls[0].args[1], 100);
 });
 
-Deno.test("RealTimeModerator conditionalReschedule ends game on non-terminal state", () => {
+Deno.test("RealTimeModerator conditionalReschedule ends game on terminal state", () => {
     const testState = new RealTimeState(0, true, 50)
     const testModerator = new RealTimeModerator([], new RealTimeEngine, testState);
 
     let clearTimeoutMock = stub(window, 'clearTimeout');
+    let endGameMock= stub(testModerator, 'endGame');
 
     testModerator.conditionalReschedule(testModerator.engineStep, 100);
 
@@ -172,6 +176,9 @@ Deno.test("RealTimeModerator conditionalReschedule ends game on non-terminal sta
     assertEquals(clearTimeoutMock.calls.length, 2);
     assertEquals(clearTimeoutMock.calls[0].args[0], testModerator.engineStep.timeout);
     assertEquals(clearTimeoutMock.calls[1].args[0], testModerator.processActionQueue.timeout);
+
+    // Check that end game was called
+    assertEquals(endGameMock.calls.length, 1);
 });
 
 Deno.test("RealTimeModerator handleAction adds action to queue", () => {

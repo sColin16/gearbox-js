@@ -1,7 +1,10 @@
+import { RealTimePlayer } from "../../core/players.js";
+import { SnakeState } from "../../games/snake.js";
+
 // This class implements the gearbox API to allow a human to play snake in the browser
 // This class must be bound to the score box, but creates its own canvas
 
-class HumanSnakePlayer extends RealTimePlayer {
+export class HumanSnakePlayer extends RealTimePlayer {
     // The colors that each type of square is colored
     static COLORS = {
         [SnakeState.EMPTY]: color(0,   0,   0),
@@ -18,7 +21,7 @@ class HumanSnakePlayer extends RealTimePlayer {
     }
 
     // Requires more work to set up everything
-    handleGameStart(state) {
+    handleGameStart(moderator, state) {
         // Don't know game size until we recieve the state object
         this.tileWidth = this.canvasSize / state.gridSize;
 
@@ -53,7 +56,7 @@ class HumanSnakePlayer extends RealTimePlayer {
     }
 
     // Update the tiles that were changed, and the score display
-    handleOutcome(outcome) {
+    handleOutcome(moderator, outcome) {
         if(outcome.action.engineStep) {
             for (let i = 0; i < outcome.stateDelta.length; i++) {
                 this.drawTile(outcome.stateDelta[i], outcome.state);
@@ -65,7 +68,7 @@ class HumanSnakePlayer extends RealTimePlayer {
     }
 
     // Show a big "Game Over" text on the canvas!
-    handleGameEnd() {
+    handleGameEnd(moderator) {
         fill(255);
         textAlign(CENTER, CENTER);
         textSize(this.canvasSize / 6);

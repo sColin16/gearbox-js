@@ -479,13 +479,15 @@ export class RealTimeModerator extends Moderator {
     conditionalReschedule(func, interval) {
         // Only reschedule if a terminal state has not been reached
         if (!this.state.terminalState) {
-            func.timeout = setTimeout(func, interval);
+            func.timeout = setTimeout(func.bind(this), interval);
         } 
         
         // Otherwise, clear both timeouts, so no more engine steps of action processesing occur
         else {
             clearTimeout(this.engineStep.timeout);
             clearTimeout(this.processActionQueue.timeout);
+
+            this.endGame();
         }
     }
 

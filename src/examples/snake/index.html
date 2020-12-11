@@ -2,17 +2,23 @@
 
 <html>
     <head>
-        <!-- Lodash is used for deep cloning the states -->
-        <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/p5@0.10.2/lib/p5.js"></script>
         <script type="text/javascript">
             new p5(); // On-demand global mode to use color() outside of setup
         </script>
-        <script type='text/javascript' src='/src/core/core.js'></script>
-        <script type='text/javascript' src='/src/games/snake/snake-core.js'></script>
-        <script type='text/javascript' src='/src/examples/snake/snake-human.js'></script>
-        <script type='text/javascript'>
-            window.onload = () => runSnake();
+        <script type='module'>
+            import { runSnake } from '/src/games/snake.js';
+            import { HumanSnakePlayer } from '/src/examples/snake/snake-human.js';
+
+            let canvasSize = 800;
+            let framerate = 10;
+            let gridSize = 20;
+            let numFood = 1;
+
+            let player = new HumanSnakePlayer(canvasSize);
+            let engineStepInterval = 1000/framerate;
+
+            window.onload = () => runSnake(player, engineStepInterval, gridSize, numFood);
         </script>
     </head>
 

@@ -1,16 +1,22 @@
+import { RealTimeState } from "../containers/states.js";
+import { RealTimeModerator } from "../core/moderators.js";
+import { RealTimeEngine } from "../core/engines.js";
+import { RealTimeValidity } from "../containers/validities.js";
+import { Queue } from "../core/helpers.js";
+
 // A snake game that can be easily displayed with HTML5 canvas
 
 // This state is more complex, and includes some methods
 // Note that these methods are getters and setters, but don't advance the state - because
 // that's the engine's job.
-class SnakeState extends RealTimeState {
+export class SnakeState extends RealTimeState {
     // Constants for what each value in the grid means
     static EMPTY = 0;
     static SNAKE = 1;
     static FOOD  = 2;
 
-    constructor(stepFreq, terminalState, direction, gridSize, startX, startY, numFood) {
-        super(stepFreq, terminalState);
+    constructor(terminalState, engineStepInterval, direction, gridSize) {
+        super(1, terminalState, engineStepInterval);
 
         this.direction = direction;
         this.gridSize = gridSize;
@@ -21,6 +27,13 @@ class SnakeState extends RealTimeState {
         // Store the snake as a queue, where the head is the back, tail is the front
         // That way, we can pop off the tail, push on a new head
         this.snake = new Queue();
+
+        this.headX = null;
+        this.headY = null;
+    }
+
+    // Puts the head and food in initial positions to start the game
+    setupGrid(startX, startY, numFood) {
         this.updateHead(startX, startY);
 
         // Put the correct amount of food onto the board
@@ -74,16 +87,18 @@ class SnakeState extends RealTimeState {
     }
 }
 
-class SnakeGameModerator extends RealTimeModerator {
-    constructor(player, stepFreq, gridSize, numFood) {
+export class SnakeGameModerator extends RealTimeModerator {
+    constructor(player, engineStepInterval, gridSize, numFood) {
         let middleCoordinate = Math.floor(gridSize/2);
+        let state = new SnakeState(false, engineStepInterval, 'UP', gridSize);
 
-        super([player], new SnakeEngine(), new SnakeState(stepFreq, false, 'UP', gridSize,
-            middleCoordinate, middleCoordinate, numFood));
+        state.setupGrid(middleCoordinate, middleCoordinate, numFood);
+
+        super([player], new SnakeEngine(), state);
     }
 }
 
-class SnakeEngine extends RealTimeEngine {
+export class SnakeEngine extends RealTimeEngine {
     static VALID_ACTIONS = ['UP', 'DOWN', 'RIGHT', 'LEFT'];
     static DIRECTIONS = {        // Definitions of change to positions for each possible action
         'UP':    {x:  0, y: -1},
@@ -92,19 +107,19 @@ class SnakeEngine extends RealTimeEngine {
         'LEFT':  {x: -1, y:  0}
     }
 
-    // Also just use the default verifyValid action function
-    constructor() {
-        super(SnakeEngine.VALID_ACTIONS);
+    validatePlayerAction(state, action) {
+        return new RealTimeValidity(SnakeEngine.VALID_ACTIONS.includes(action.repr));
     }
 
     // Updating the state based on the action is purely a matter of changing the direction
     processPlayerAction(state, action) {
-        // Deep clone the state using the Lodash library
-        let utilities = 0; // No utility for changing direction
+        state = state.clone();
 
-        state.direction = action.actionRepr;
+        state.direction = action.repr;
 
-        return this.outcome(utilities, state, undefined); // No stateDelta for changing dir.
+        let utilities = [0]; // No utility for changing direction
+
+        return this.makeProcessedActionOutcome(utilities, state, undefined); // No state delta for player moving
     }
 
     // Steping is more involved, updating positions, heads, tails, and food
@@ -118,7 +133,9 @@ class SnakeEngine extends RealTimeEngine {
         let newHeadX = state.headX + deltaX;
         let newHeadY = state.headY + deltaY;
 
-        let utilities = 0;
+        let utilities = [0];
+
+        state = state.clone();
 
         if (this.isGameOverPos(newHeadX, newHeadY, state)) {
             state.terminalState = true;
@@ -140,7 +157,7 @@ class SnakeEngine extends RealTimeEngine {
             stateDelta.push({x: newHeadX, y: newHeadY});
         }
 
-        return this.outcome(utilities, state, stateDelta);
+        return this.makeProcessedActionOutcome(utilities, state, stateDelta);
     }
 
     // Helper functions to determine is game over has occrued
@@ -153,10 +170,8 @@ class SnakeEngine extends RealTimeEngine {
     }
 }
 
-function runSnake(player = new HumanSnakePlayer(600), stepFreq = 10, gridSize = 20,
-    numFood = 1) {
-    
-    mod = new SnakeGameModerator(player, stepFreq, gridSize, numFood);
+export function runSnake(player, engineStepInterval, gridSize, numFood) {
+    let mod = new SnakeGameModerator(player, engineStepInterval, gridSize, numFood);
 
     mod.runGame();
 }
