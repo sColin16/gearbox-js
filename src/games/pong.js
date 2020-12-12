@@ -1,6 +1,7 @@
 import { RealTimeState } from "../containers/states.js";
 import { RealTimeModerator, TransformCollection } from "../core/moderators.js";
 import { RealTimeEngine } from "../core/engines.js";
+import { RealTimeValidity } from "../containers/validities.js";
 
 /**
  * Simple class to do 2D vector math with
@@ -115,7 +116,7 @@ export class Paddle {
         this.pos = new Vector(xPos, yPos);
 
         this.width = width;
-        this.weight = height;
+        this.height = height;
 
         this.velocity = 0;                      // The velocity of the paddle in the last frame
         this.target = yPos;                     // The y-coordinate the paddle is moving to
@@ -135,6 +136,18 @@ export class Paddle {
         } else {
             return velocity;
         }
+    }
+
+    /**
+     * Determines if the ball is in the y-range needed to collide with the paddle
+     * @param {Paddle} paddle - The paddle to detect if the ball is in range of
+     * @returns {boolean} - Whether or not the ball is in the y-range needed to collide with the paddle
+     */
+    ballInRange(ball) {
+        let y = this.pos.y;
+        let diff = this.height / 2 + ball.size / 2;
+
+        return ball.pos.y < (y + diff) && ball.pos.y > (y - diff);
     }
 
     /**
@@ -179,11 +192,11 @@ export class PongState extends RealTimeState {
     }
 
     /**
-     * Helper function to call update on one of the state's paddles
-     * @param {number} paddleIndex - Either 0 or 1, the paddle to call update on
+     * Helper function to call update on both of the state's paddles
      */
-    updatePaddle(paddleIndex) {
-        this.paddles[paddleIndex].update();
+    updatePaddles() {
+        this.leftPaddle.update();
+        this.rightPaddle.update();
     }
 
     /**
@@ -209,27 +222,16 @@ export class PongState extends RealTimeState {
         return this.ball.bounceY(this.height + this.ball.size / 2, this.height - this.ball.size / 2);
     }
 
-    /**
-     * Determines if the ball is in the y-range needed to collide with the paddle
-     * @param {Paddle} paddle - The paddle to detect if the ball is in range of
-     * @returns {boolean} - Whether or not the ball is in the y-range needed to collide with the paddle
-     */
-    inRangePaddle(paddle) {
-        let y = paddle.pos.y;
-        let diff = paddle.height / 2 + this.ball.size / 2;
-
-        return this.ball.pos.y < (y + diff) && this.ball.pos.y > (y - diff);
-    }
 
     /**
      * Determines if the ball should bounce off the left paddle. Updates velocity of ball if so
      * @returns {boolean} - Whether or not the ball bounced off the left paddle
      */
     leftPaddleBounce() {
-        if (this.inRangePaddle(this.leftPaddle)) {
+        if (this.leftPaddle.ballInRange(this.ball)) {
             let leftPaddleEdge = this.leftPaddle.pos.x + this.leftPaddle.width / 2;
 
-            return this.bounceX(leftPaddleEdge, leftPaddleEdge + this.ball.size / 2);
+            return this.ball.bounceX(leftPaddleEdge, leftPaddleEdge + this.ball.size / 2);
         }
 
         return false;
@@ -240,10 +242,10 @@ export class PongState extends RealTimeState {
      * @returns {boolean} - Whether or not the ball bounced off the right paddle
      */
     rightPaddleBounce() {
-        if (this.inRangePaddle(this.rightPaddle)) {
+        if (this.rightPaddle.ballInRange(this.ball)) {
             let rightPaddleEdge = this.rightPaddle.pos.x - this.rightPaddle.width / 2;
 
-            return this.bounce(rightPaddleEdge, rightPaddleEdge - this.ball.size / 2, 'x');
+            return this.ball.bounceX(rightPaddleEdge, rightPaddleEdge - this.ball.size / 2);
         }
 
         return false;
@@ -261,13 +263,13 @@ export class PongState extends RealTimeState {
 
 export class PongTransformCollection extends TransformCollection {
     // Hide all actions made by the opponent, to prevent learning the opponent's targets
-    hideOutcome(engineOutcome, playerID) {
+    static hideOutcome(engineOutcome, playerID) {
         return !engineOutcome.action.engineStep && 
             engineOutcome.action.playerID != playerID;
     }
 
     // Make the player on the right appear as if on the left, and hide the opponent's target
-    transformState(state, playerID) {
+    static transformState(state, playerID) {
         if (playerID == 1) {
             // Flip the x-coordinate
             state.ball.pos.x = state.width - state.ball.pos.x;
@@ -288,13 +290,13 @@ export class PongTransformCollection extends TransformCollection {
 
     // Let's both players view left-bounce actions as their own paddle bounce, consistent with
     // the transformed state
-    transformStateDelta(stateDelta, playerID) {
+    static transformStateDelta(stateDelta, playerID) {
         if (playerID == 1) {
             for (let i = 0; i < stateDelta.length; i++) {
                 if (stateDelta[i] == 'left-bounce') {
                     stateDelta[i] = 'right-bounce';
     
-                } else if (stateDelta[i] = 'right-bounce') {
+                } else if (stateDelta[i] == 'right-bounce') {
                     stateDelta[i] = 'left-bounce';
                 }
             }
@@ -313,8 +315,8 @@ export class PongGameModerator extends RealTimeModerator {
 }
 
 export class PongEngine extends RealTimeEngine {
-    validateAction(state, action) {
-        return action.repr >= 0 && action.repr <= state.height;
+    validatePlayerAction(state, action) {
+        return new RealTimeValidity(action.repr >= 0 && action.repr <= state.height);
     }
 
     processPlayerAction(state, action) {
@@ -329,14 +331,11 @@ export class PongEngine extends RealTimeEngine {
 
         paddle.target = action.repr;
 
-        return this.outcome(utilities, state, undefined);
+        return this.makeProcessedActionOutcome(utilities, state, undefined);
     }
 
     processEngineStep(state, action) {
-        // Update the paddle positions and ball first
-        state.updatePaddle(0);
-        state.updatePaddle(1);
-
+        state.updatePaddles();
         state.updateBall();
 
         // By default, no important changes occured
@@ -370,13 +369,13 @@ export class PongEngine extends RealTimeEngine {
 
             state.terminalState = true;
 
-        } else if (state.ball.pos.x > width - state.ball.size / 2) {
+        } else if (state.ball.pos.x > state.width - state.ball.size / 2) {
             utilities = [1, -1];
 
             state.terminalState = true;
         }
 
-        return this.outcome(utilities, state, stateDelta);
+        return this.makeProcessedActionOutcome(utilities, state, stateDelta);
     }
 }
 
