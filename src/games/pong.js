@@ -7,7 +7,7 @@ import { RealTimeEngine } from "../core/engines.js";
  * @param {number} x - magnitude of the x component of the vector
  * @param {number} y - magnitude of the y component of the vector
  */
-class Vector {
+export class Vector {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -24,16 +24,101 @@ class Vector {
 }
 
 /**
+ * Represnts the ball (assumed to be a square) within a PongState
+ * @param {number} xPos - x-coordinate of the center of the ball
+ * @param {number} yPos - y-coordinate of the center of the ball
+ * @param {number} xVel - ball's velocity in the x-direction
+ * @param {number} yVel - ball's veloicty in the y-direction
+ * @param {number} size - side-length of the ball
+ */
+export class Ball {
+    constructor(xPos, yPos, xVel, yVel, size) {
+        this.pos = new Vector(xPos, yPos);
+        this.vel = new Vector(xVel, yVel);
+
+        this.size = size;
+    }
+
+    /**
+     * Creates and returns a new Ball instance based off the magnitude and angle of the velocity
+     * @param {number} xPos - x-coordinate of the center of the ball
+     * @param {number} yPos - y-coordinate of the center of the ball
+     * @param {number} vel - magnitude of the ball's velocity
+     * @param {number} angle - angle of the ball's velocity, in radians
+     */
+    static fromMagnitude(xPos, yPos, vel, angle, size) {
+        let xVel = vel * Math.cos(angle);
+        let yVel = vel * Math.sin(angle);
+
+        return new Ball(xPos, yPos, xVel, yVel, size);
+    }
+
+    /**
+     * Detects if the ball bounced against some object, and updates the velocity for the ball if so
+     * @param {number} innerLimit - The innermost coordinate for which a ball can be said to have collided with an object
+     * @param {number} outerLimit - The outermost coordinate for which a ball can be said to have collided with an object
+     * @param {String} direction - x or y, which component to detect a bounce along
+     * @returns {boolean} - whether or not the ball bounced
+     */
+    bounce(innerLimit, outerLimit, direction) {
+        let lowerLimit = Math.min(innerLimit, outerLimit);
+        let upperLimit = Math.max(innerLimit, outerLimit);
+
+        if (this.pos[direction] >= lowerLimit && this.pos[direction] <= upperLimit) {
+            this.vel[direction] *= -1;
+            this.pos[direction] = outerLimit;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Helper function to detect if the ball bounced against an object in the x-direction
+     * @param {number} innerLimit - The innermost coordinate for which a ball can be said to have collided with an object
+     * @param {number} outerLimit - The outermost coordinate for which a ball can be said to have collided with an object
+     * @returns {boolean} - whether or not the ball bounced
+     */
+    bounceX(innerLimit, outerLimit) {
+        return this.bounce(innerLimit, outerLimit, 'x');
+    }
+
+    /**
+     * 
+     * @param {number} innerLimit - The innermost coordinate for which a ball can be said to have collided with an object
+     * @param {number} outerLimit - The outermost coordinate for which a ball can be said to have collided with an object
+     * @returns {boolean} - whetehr or not the ball bounced
+     */
+    bounceY(innerLimit, outerLimit) {
+        return this.bounce(innerLimit, outerLimit, 'y');
+    }
+
+    /**
+     * Update's the ball's velocity according to it's position
+     */
+    update() {
+        this.pos.add(this.vel);
+    }
+}
+
+/**
  * Represents one of the player's paddles within a PongState
  * @param {number} xPos - x-coordinate of the center of the paddle
  * @param {number} yPos - y-coordinate of the center of the paddle
+ * @param {number} width - width of the paddle
+ * @param {number} height - height of the paddle
  * @param {number} maxVel - maximum velocity the paddle is allowed to move at
  */
-class Paddle {
-    constructor(xPos, yPos, maxVel) {
-        this.pos = new Vector(xPos, yPos);      // A coordinate of the center of the paddle
-        this.target = yPos;                     // The y-coordinate the paddle is moving to
+export class Paddle {
+    constructor(xPos, yPos, width, height, maxVel) {
+        this.pos = new Vector(xPos, yPos);
+
+        this.width = width;
+        this.weight = height;
+
         this.velocity = 0;                      // The velocity of the paddle in the last frame
+        this.target = yPos;                     // The y-coordinate the paddle is moving to
         this.maxVel = maxVel;                   // Maximum change in position in single step
     }
 
@@ -55,7 +140,7 @@ class Paddle {
     /**
      * Moves the paddle closer to it's target position, with a velocity up to maxVel
      */
-    updatePaddle() {
+    update() {
         let distToTarget = this.target - this.pos.y;
 
         let velocity = this.constrainVelocity(distToTarget);
@@ -70,72 +155,42 @@ class Paddle {
  * @param {number} engineStepInterval - milliseconds between when the ball and paddle positions are updated
  * @param {number} width - width of the arena
  * @param {number} height - height of the arena
- * @param {number} ballSize - side length of the square ball used in the game
- * @param {number} ballVel - magnitude of the velocity of the ball
- * @param {number} ballAngle - direction of the velocity of the ball, in radians
- * @param {number} paddleWidth - width of each player's paddles
- * @param {number} paddleHeight - height of each player's paddles
- * @param {number} paddleEdgeOffset - distance from the center of the paddle to the edge of the arena
- * @param {number} paddleMaxVel - maximum velocity for both paddles
+ * @param {Ball} ballSize - ball object for the state
+ * @param {Paddle} leftPaddle - paddle for the left player
+ * @param {Paddle} rightPaddle - paddle for the right player
  * @param {number} randomSpinWeight - how much randomness affects the ball's direction after bouncing off a paddle
  * @param {number} paddleSpinWeight - how much the paddle's velocity affects the ball's direction after bouncing off a paddle
  */
-class PongState extends RealTimeState {
-    constructor(engineStepInterval, width, height, ballSize, ballVel,
-            ballAngle, paddleWidth, paddleHeight, paddleEdgeOffset, paddleMaxVel,
-            randomSpinWeight, paddleSpinWeight) {
+export class PongState extends RealTimeState {
+    constructor(engineStepInterval, width, height, ball, leftPaddle,
+            rightPaddle, randomSpinWeight, paddleSpinWeight) {
 
         super(2, false, engineStepInterval);
 
         this.width = width;
         this.height = height;
 
-        this.ballSize = ballSize;
-        this.ballPos = new Vector(width / 2, height / 2);
-        this.ballVel = new Vector(ballVel * Math.cos(ballAngle), ballVel * Math.sin(ballAngle));
-
-        this.paddleWidth = paddleWidth;
-        this.paddleHeight = paddleHeight;
+        this.leftPaddle = leftPaddle;
+        this.rightPaddle = rightPaddle;
+        this.ball = ball;
 
         this.randomSpinWeight = randomSpinWeight;
         this.paddleSpinWeight = paddleSpinWeight;
-
-        let leftPaddle = new Paddle(paddleEdgeOffset, height / 2, paddleMaxVel);
-        let rightPaddle = new Paddle(width - paddleEdgeOffset, height / 2, paddleMaxVel);
-
-        this.paddles = [leftPaddle, rightPaddle];
     }
 
     /**
-     * Helper function to call updatePaddle on one of the state's paddles
-     * @param {number} paddleIndex - Either 0 or 1, the paddle to call updatePaddle on
+     * Helper function to call update on one of the state's paddles
+     * @param {number} paddleIndex - Either 0 or 1, the paddle to call update on
      */
     updatePaddle(paddleIndex) {
-        this.paddles[paddleIndex].updatePaddle();
+        this.paddles[paddleIndex].update();
     }
 
-    // General function for detecting all bounces
-    // Outer limit should be the coordinate for when the ball collided with the outer shell
-    // Inner limited should be the coordinate for the furthest into the object that still counts
     /**
-     * Detects if the ball bounced against some object, and update velocity for bounce if so
-     * @param {number} innerLimit - The innermost coordinate for which a ball can be said to have collided with an object
-     * @param {number} outerLimit - The outermost coordinate for which a ball can be said to have collided with an object
-     * @param {String} direction - x or y, which component to detect a bounce along
-     * @returns {boolean} - whether or not the ball bounced
+     * Helper function to call update on the state's ball
      */
-    bounce(innerLimit, outerLimit, direction) {
-        let lowerLimit = Math.min(innerLimit, outerLimit);
-        let upperLimit = Math.max(innerLimit, outerLimit);
-
-        if (this.ballPos[direction] >= lowerLimit && this.ballPos[direction] <= upperLimit) {
-            this.ballVel[direction] *= -1;
-            this.ballPos[direction] = outerLimit;
-
-            return true;
-        }
-
-        return false;
+    updateBall() {
+        this.ball.update();
     }
 
     /**
@@ -143,7 +198,7 @@ class PongState extends RealTimeState {
      * @returns {boolean} - Whether or not the ball bounced off the top of the arena
      */
     topBounce() {
-        return this.bounce(-this.ballSize / 2, this.ballSize / 2, 'y');
+        return this.ball.bounceY(-this.ball.size / 2, this.ball.size / 2);
     }
 
     /**
@@ -151,20 +206,19 @@ class PongState extends RealTimeState {
      * @returns {boolean} - Whether or not the ball bounced off the bottom of the arena
      */
     bottomBounce() {
-        return this.bounce(this.height + this.ballSize / 2, 
-            this.height - this.ballSize / 2, 'y');
+        return this.ball.bounceY(this.height + this.ball.size / 2, this.height - this.ball.size / 2);
     }
 
     /**
      * Determines if the ball is in the y-range needed to collide with the paddle
-     * @param {number} paddleIndex - Either 0 or 1, which paddle to detect a potential collision with
+     * @param {Paddle} paddle - The paddle to detect if the ball is in range of
      * @returns {boolean} - Whether or not the ball is in the y-range needed to collide with the paddle
      */
-    inRangePaddle(paddleIndex) {
-        let y = this.paddles[paddleIndex].pos.y;
-        let diff = this.paddleHeight / 2 + this.ballSize / 2;
+    inRangePaddle(paddle) {
+        let y = paddle.pos.y;
+        let diff = paddle.height / 2 + this.ball.size / 2;
 
-        return this.ballPos.y < (y + diff) && this.ballPos.y > (y - diff);
+        return this.ball.pos.y < (y + diff) && this.ball.pos.y > (y - diff);
     }
 
     /**
@@ -172,10 +226,10 @@ class PongState extends RealTimeState {
      * @returns {boolean} - Whether or not the ball bounced off the left paddle
      */
     leftPaddleBounce() {
-        if (this.inRangePaddle(0)) {
-            let leftPaddleEdge = this.paddles[0].pos.x + this.paddleWidth / 2;
+        if (this.inRangePaddle(this.leftPaddle)) {
+            let leftPaddleEdge = this.leftPaddle.pos.x + this.leftPaddle.width / 2;
 
-            return this.bounce(leftPaddleEdge, leftPaddleEdge + this.ballSize / 2, 'x');
+            return this.bounceX(leftPaddleEdge, leftPaddleEdge + this.ball.size / 2);
         }
 
         return false;
@@ -186,10 +240,10 @@ class PongState extends RealTimeState {
      * @returns {boolean} - Whether or not the ball bounced off the right paddle
      */
     rightPaddleBounce() {
-        if (this.inRangePaddle(1)) {
-            let rightPaddleEdge = this.paddles[1].pos.x - this.paddleWidth / 2;
+        if (this.inRangePaddle(this.rightPaddle)) {
+            let rightPaddleEdge = this.rightPaddle.pos.x - this.rightPaddle.width / 2;
 
-            return this.bounce(rightPaddleEdge, rightPaddleEdge - this.ballSize / 2, 'x');
+            return this.bounce(rightPaddleEdge, rightPaddleEdge - this.ball.size / 2, 'x');
         }
 
         return false;
@@ -197,15 +251,15 @@ class PongState extends RealTimeState {
 
     /**
      * Spins the ball, changing it's y velocity according to the weights in the state
-     * @param {number} paddleIndex - Either 0 or 1, which paddle's velocity to use to spin the ball
+     * @param {Paddle} paddle - The paddle to use to spin the ball
      */
-    spinBall(paddleIndex) {
-        this.ballVel.y += this.randomSpinWeight * (Math.random() * 2 - 1);
-        this.ballVel.y += this.paddleSpinWeight * this.paddles[paddleIndex].velocity
+    spinBall(paddle) {
+        this.ball.vel.y += this.randomSpinWeight * (Math.random() * 2 - 1);
+        this.ball.vel.y += this.paddleSpinWeight * paddle.velocity
     }
 }
 
-class PongTransformCollection extends TransformCollection {
+export class PongTransformCollection extends TransformCollection {
     // Hide all actions made by the opponent, to prevent learning the opponent's targets
     hideOutcome(engineOutcome, playerID) {
         return !engineOutcome.action.engineStep && 
@@ -216,20 +270,18 @@ class PongTransformCollection extends TransformCollection {
     transformState(state, playerID) {
         if (playerID == 1) {
             // Flip the x-coordinate
-            state.ballPos.x = state.width - state.ballPos.x;
+            state.ball.pos.x = state.width - state.ball.pos.x;
 
             // Reverse the x velocity
-            state.ballVel.x *= -1;
+            state.ball.vel.x *= -1;
 
             // Swap the paddles and their x-coordinates
-            state.paddles = [state.paddles[1], state.paddles[0]];
-
-            state.paddles[0].pos.x = state.width - state.paddles[0].pos.x;
-            state.paddles[1].pos.x = state.width - state.paddles[1].pos.x;
+            [state.leftPaddle, state.rightPaddle] = [state.rightPaddle, state.leftPaddle];
+            [state.leftPaddle.pos.x, state.rightPaddle.pos.x] = [state.rightPaddle.pos.x, state.leftPaddle.pos.x];
         }
 
         // Hide the opponent's target
-        state.paddles[1].target = 0;
+        state.rightPaddle.target = null;
 
         return state
     }
@@ -252,7 +304,7 @@ class PongTransformCollection extends TransformCollection {
     }
 }
 
-class PongGameModerator extends RealTimeModerator {
+export class PongGameModerator extends RealTimeModerator {
     constructor(player1, player2, pongState) {
         let pipes = PongTransformCollection.buildPipes([player1, player2]);
         
@@ -260,7 +312,7 @@ class PongGameModerator extends RealTimeModerator {
     }
 }
 
-class PongEngine extends RealTimeEngine {
+export class PongEngine extends RealTimeEngine {
     validateAction(state, action) {
         return action.repr >= 0 && action.repr <= state.height;
     }
@@ -268,18 +320,24 @@ class PongEngine extends RealTimeEngine {
     processPlayerAction(state, action) {
         let utilities = [0, 0];
 
-        state.paddles[action.playerID].target = action.actionRepr;
+        let paddle;
+        if (action.playerID === 0) {
+            paddle = state.leftPaddle;
+        } else if (action.playerID === 1) {
+            paddle = state.rightPaddle;
+        }
+
+        paddle.target = action.repr;
 
         return this.outcome(utilities, state, undefined);
     }
 
     processEngineStep(state, action) {
-        // Update the paddle positions first
+        // Update the paddle positions and ball first
         state.updatePaddle(0);
         state.updatePaddle(1);
 
-        // Update the ball position based on its velocity
-        state.ballPos.add(state.ballVel);
+        state.updateBall();
 
         // By default, no important changes occured
         let stateDelta = [];
@@ -296,23 +354,23 @@ class PongEngine extends RealTimeEngine {
         if (state.leftPaddleBounce()) {
             stateDelta.push('left-bounce');
 
-            state.spinBall(0);
+            state.spinBall(state.leftPaddle);
 
         } else if (state.rightPaddleBounce()) {
             stateDelta.push('right-bounce');
 
-            state.spinBall(1);
+            state.spinBall(state.rightPaddle);
         }
 
         let utilities = [0, 0];
 
         // Give a point to a player if the ball left the screen
-        if (state.ballPos.x < state.ballSize / 2) {
+        if (state.ball.pos.x < state.ball.size / 2) {
             utilities = [-1, 1];
 
             state.terminalState = true;
 
-        } else if (state.ballPos.x > width - state.ballSize / 2) {
+        } else if (state.ball.pos.x > width - state.ball.size / 2) {
             utilities = [1, -1];
 
             state.terminalState = true;
@@ -322,13 +380,16 @@ class PongEngine extends RealTimeEngine {
     }
 }
 
-function runPong(player1, player2, engineStepInterval, width, height,
-        ballSize, ballVel, ballAngle, paddleWidth, paddleHeight, paddleEdgeOffset,
+export function runPong(player1, player2, engineStepInterval, width, height,
+        ballVel, ballAngle, ballSize, paddleWidth, paddleHeight, paddleEdgeOffset,
         paddleMaxVel, randomSpinWeight, paddleSpinWeight) {
 
-    let pongState = new PongState(engineStepInterval, width, height,
-            ballSize, ballVel, ballAngle, paddleWidth, paddleHeight,
-            paddleEdgeOffset, paddleMaxVel, randomSpinWeight, paddleSpinWeight);
+    let leftPaddle = new Paddle(paddleEdgeOffset, height/2, paddleWidth, paddleHeight, paddleMaxVel);
+    let rightPaddle = new Paddle(width - paddleEdgeOffset, height/2, paddleWidth, paddleHeight, paddleMaxVel);
+    let ball = new Ball.fromMagnitude(width/2, height/2, ballVel, ballAngle, ballSize);
+
+    let pongState= new PongState(engineStepInterval, width, height, ball, leftPaddle, 
+            rightPaddle, randomSpinWeight, paddleSpinWeight);
 
     let mod = new PongGameModerator(player1, player2, pongState);
 
