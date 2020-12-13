@@ -335,6 +335,9 @@ export class PongEngine extends RealTimeEngine {
     }
 
     processEngineStep(state, action) {
+        // Clone the state to modify it
+        state = state.clone();
+
         state.updatePaddles();
         state.updateBall();
 
@@ -385,7 +388,7 @@ export function runPong(player1, player2, engineStepInterval, width, height,
 
     let leftPaddle = new Paddle(paddleEdgeOffset, height/2, paddleWidth, paddleHeight, paddleMaxVel);
     let rightPaddle = new Paddle(width - paddleEdgeOffset, height/2, paddleWidth, paddleHeight, paddleMaxVel);
-    let ball = new Ball.fromMagnitude(width/2, height/2, ballVel, ballAngle, ballSize);
+    let ball = Ball.fromMagnitude(width/2, height/2, ballVel, ballAngle, ballSize);
 
     let pongState= new PongState(engineStepInterval, width, height, ball, leftPaddle, 
             rightPaddle, randomSpinWeight, paddleSpinWeight);

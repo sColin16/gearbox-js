@@ -1,5 +1,7 @@
-class HumanPongPlayer extends RealTimePlayer {
-    handleGameStart(state) {
+import { RealTimePlayer } from "../../core/players.js";
+
+export class HumanPongPlayer extends RealTimePlayer {
+    handleGameStart(moderator, state) {
         // Tracks if the game is in progress, and actions should be submitted
         this.gameRunning = true;
 
@@ -14,7 +16,7 @@ class HumanPongPlayer extends RealTimePlayer {
 
             canvas.id('pong-gearbox-canvas')
         
-            // Also, add an event listener to submit the new target when the mouseis moved
+            // Also, add an event listener to submit the new target when the mouse is moved
             window.addEventListener('mousemove', event => {
                 if (this.gameRunning) {
                     this.takeAction(mouseY);
@@ -25,22 +27,19 @@ class HumanPongPlayer extends RealTimePlayer {
         this.drawState(state);
     }
 
-    handleOutcome(outcome) {
+    handleOutcome(moderator, outcome) {
         let state = outcome.state;
 
         this.drawState(state);
     }
 
-    handleGameEnd() {
+    handleGameEnd(moderator) {
         console.log('Player alerted that game is ending');
 
         this.gameRunning = false;
     }
 
     drawState(state) {
-        let paddleWidth = state.paddleWidth;
-        let paddleHeight = state.paddleHeight;
-
         // Draw a black background
         background(0, 0, 0);
 
@@ -48,12 +47,12 @@ class HumanPongPlayer extends RealTimePlayer {
         fill(255, 255, 255);
 
         // Draw the left paddle (player's paddle)
-        rect(state.paddles[0].pos.x, state.paddles[0].pos.y, paddleWidth, paddleHeight);
+        rect(state.leftPaddle.pos.x, state.leftPaddle.pos.y, state.leftPaddle.width, state.leftPaddle.height);
 
         // Draw the right paddle (oppoent's paddle)
-        rect(state.paddles[1].pos.x, state.paddles[1].pos.y, paddleWidth, paddleHeight);
+        rect(state.rightPaddle.pos.x, state.rightPaddle.pos.y, state.leftPaddle.width, state.rightPaddle.height);
 
         // Draw the ball
-        rect(state.ballPos.x, state.ballPos.y, state.ballSize, state.ballSize);
+        rect(state.ball.pos.x, state.ball.pos.y, state.ball.size, state.ball.size);
     }
 }
