@@ -263,9 +263,10 @@ export class PongState extends RealTimeState {
 
 export class PongTransformCollection extends TransformCollection {
     // Hide all actions made by the opponent, to prevent learning the opponent's targets
+    // Don't hide any invalid actions
     static hideOutcome(engineOutcome, playerID) {
-        return !engineOutcome.action.engineStep && 
-            engineOutcome.action.playerID != playerID;
+        return (!engineOutcome.validity.overall) || (!engineOutcome.action.engineStep && 
+            engineOutcome.action.playerID != playerID);
     }
 
     // Make the player on the right appear as if on the left, and hide the opponent's target

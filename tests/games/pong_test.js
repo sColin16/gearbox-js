@@ -6,6 +6,7 @@ import {
 import { stub } from "https://deno.land/x/mock/mod.ts";
 import { RealTimeAction } from "../../src/containers/actions.js";
 import { EngineOutcome } from "../../src/containers/outcomes.js";
+import { RealTimeValidity } from "../../src/containers/validities.js";
 import { Ball, Paddle, PongEngine, PongState, PongTransformCollection, Vector } from "../../src/games/pong.js";
 
 Deno.test("Vector add works correctly", () => {
@@ -221,19 +222,19 @@ Deno.test("PongState spinBall updates ball's y-vel according to weights", () => 
 });
 
 Deno.test("PongTransformCollection hideOutcome hides opponent action", () => {
-    let engineOutcome = new EngineOutcome(null, new RealTimeAction(200, 0, false), null, null, null);
+    let engineOutcome = new EngineOutcome(new RealTimeValidity(true), new RealTimeAction(200, 0, false), null, null, null);
 
     assert(PongTransformCollection.hideOutcome(engineOutcome, 1));
 });
 
 Deno.test("PongTransformCollection hideOutcome does not hide self actions", () => {
-    let engineOutcome = new EngineOutcome(null, new RealTimeAction(200, 1, false), null, null, null);
+    let engineOutcome = new EngineOutcome(new RealTimeValidity(true), new RealTimeAction(200, 1, false), null, null, null);
 
     assert(!PongTransformCollection.hideOutcome(engineOutcome, 1));
 });
 
 Deno.test("PongTransformCollection hideOutcome does not hide engine steps", () => {
-    let engineOutcome = new EngineOutcome(null, new RealTimeAction('engineStep', undefined, true), null, null, null);
+    let engineOutcome = new EngineOutcome(new RealTimeValidity(true), new RealTimeAction('engineStep', undefined, true), null, null, null);
 
     assert(!PongTransformCollection.hideOutcome(engineOutcome, 0));
 });
