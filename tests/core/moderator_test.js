@@ -63,6 +63,32 @@ Deno.test("TransformCollection buildPipes creates moderator pipeline that does n
     assertEquals(playerHandleOutcome.calls[0].args[1], expectedOutcome);
 });
 
+Deno.test("TransformCollection buildPipes creates moderator pipeline that is robust to invalid moves, and undefined fields", () => {
+    const outcome = new EngineOutcome(new Validity(false), undefined, undefined, undefined, undefined);
+
+    class TestEngine extends Engine {
+        determineOutcome(state, action) {
+            return outcome;
+        }
+    }
+
+    class TestModerator extends Moderator {
+        constructor(players, engine, state) {
+            let pipes = TransformCollection.buildPipes(players);
+
+            super(pipes, engine, state)
+        } 
+    }
+
+    const player = new Player();
+    const moderator = new TestModerator([player], new TestEngine(), new State('b'));
+
+    let playerHandleOutcome = stub(player, 'handleOutcome');
+
+    // If this does not throw an error, then the pipes handles the undefined fields fine
+    moderator.processAndReport();
+});
+
 Deno.test("TransformCollection buildPipes creates moderator pipeline that does not transform state or action", () => {
     let state = new State('a');
 

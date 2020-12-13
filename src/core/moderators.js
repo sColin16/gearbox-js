@@ -135,10 +135,15 @@ export class TransformCollection {
 
         // Transform all aspects of the outcome
         let validity = this.transformValidity(outcomeCopy.validity, playerID);
-        let action = this.transformSendAction(outcomeCopy.action, playerID);
-        let utilities = this.transformUtilities(outcomeCopy.utilities, playerID);
-        let state = this.transformState(outcomeCopy.state, playerID);
-        let stateDelta = this.transformStateDelta(outcomeCopy.stateDelta, playerID);
+
+        // Only transform these elements in the action was valid
+        let action, utilities, state, stateDelta;
+        if (validity.overall) {
+            action = this.transformSendAction(outcomeCopy.action, playerID);
+            utilities = this.transformUtilities(outcomeCopy.utilities, playerID);
+            state = this.transformState(outcomeCopy.state, playerID);
+            stateDelta = this.transformStateDelta(outcomeCopy.stateDelta, playerID);
+        }
 
         // Return the transformed outcome
         return new PlayerOutcome(validity, action, utilities, state, stateDelta);
