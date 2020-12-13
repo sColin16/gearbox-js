@@ -1,6 +1,8 @@
+import { AsyncPlayer } from "../../core/players.js";
+
 // Class that implements gearbox API to allow a human to play Nim in the browser
 // This class must be bound to elements on the webpage
-class HumanNimPlayer extends AsyncPlayer {
+export class HumanNimPlayer extends AsyncPlayer {
     constructor() {
         super();
 
@@ -32,11 +34,11 @@ class HumanNimPlayer extends AsyncPlayer {
         this.twoButton.disabled = true;
     }
 
-    handleGameStart() {
-        console.log('Human alerted that the game has started');
-    }
+    handleGameStart(moderator, state) { }
 
-    handleOutcome(outcome) {
+    handleOutcome(moderator, outcome) {
+        console.log('Turn outcome:', outcome);
+        
         // Report if the action was invalid, return early
         if(!outcome.validity.overall) {
             if(outcome.action.playerID.isSelf) {
@@ -52,9 +54,9 @@ class HumanNimPlayer extends AsyncPlayer {
         let moveRecord = document.createElement('p');
 
         if (outcome.action.playerID.isSelf) {
-            moveRecord.innerText = `You took ${outcome.action.actionRepr} tokens`;
+            moveRecord.innerText = `You took ${outcome.action.repr} tokens`;
         } else {
-            moveRecord.innerText = `Opponent took ${outcome.action.actionRepr} tokens`;
+            moveRecord.innerText = `Opponent took ${outcome.action.repr} tokens`;
         }
 
         this.moveHistoryDisplay.appendChild(moveRecord);
@@ -74,7 +76,5 @@ class HumanNimPlayer extends AsyncPlayer {
         }
     }
 
-    handleGameEnd() {
-        console.log('Human alerted that game has ended');
-    }
+    handleGameEnd(moderator) { }
 }

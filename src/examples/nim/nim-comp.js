@@ -1,9 +1,11 @@
-// A "smart" nim computer player (pretty sure its actually dumb)
+import { Player } from "../../core/players.js";
+import { delay } from "../../core/helpers.js";
 
-class ComputerNimPlayer extends Player {
-    async getAction(state) {
+// A "smart" nim computer player (pretty sure its actually dumb)
+export class ComputerNimPlayer extends Player {
+    async handleActionRequest(moderator, state) {
         // Simulate a delay as if the computer was thinking
-        await delay(2000);
+        await delay(1000);
 
         // Attempt to choose a move intelligently (which I think is wrong)
         let action;
@@ -19,15 +21,9 @@ class ComputerNimPlayer extends Player {
     }
 
     // Dummy functions that could be replaced with more advanced things for advanced players
-    handleGameStart() {
-        console.log('Computer alerted game is starting');
-    }
+    handleGameStart(moderator, state) {}
 
-    handleOutcome(outcome) {
-        console.log(outcome);
-    }
+    handleOutcome(moderator, outcome) {}
 
-    handleGameEnd() {
-        console.log('Computer alerted game is ending');
-    }
+    handleGameEnd(moderator) {}
 }

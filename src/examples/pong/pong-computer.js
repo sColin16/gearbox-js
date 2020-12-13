@@ -1,17 +1,14 @@
+import { RealTimePlayer } from "../../core/players.js";
 // A basic pong player that just follows the ball
 
-class ComputerPongPlayer extends RealTimePlayer {
-    handleGameStart(state) {
-        console.log('Computer alerted game is starting');
-    }
+export class ComputerPongPlayer extends RealTimePlayer {
+    handleGameStart(moderator, state) {}
 
-    handleOutcome(outcome) {
+    handleOutcome(moderator, outcome) {
         if (outcome.action.engineStep) {
-            this.takeAction(outcome.state.ballPos.y);
+            this.takeAction(outcome.state.ball.pos.y);
         }
     }
 
-    handleGameEnd() {
-        console.log('Copmuter alerted game is ending');
-    }
+    handleGameEnd(moderator) { }
 }

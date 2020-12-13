@@ -2,18 +2,36 @@
 
 <html>
     <head>
-         <!-- Lodash is used for deep cloning the states -->
-        <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/p5@0.10.2/lib/p5.js"></script>
         <script type="text/javascript">
             new p5(); // On-demand global mode to use color() outside of setup
         </script>
-        <script type='text/javascript' src='/src/core/core.js'></script>
-        <script type='text/javascript' src='/src/games/pong/pong-core.js'></script>
-        <script type='text/javascript' src='/src/examples/pong/pong-human.js'></script>
-        <script type='text/javascript' src='/src/examples/pong/pong-computer.js'></script>
-        <script type='text/javascript'>
-            window.onload = () => runPong();
+        <script type='module'>
+            import { runPong } from "/src/games/pong.js";
+            import { HumanPongPlayer } from "/src/examples/pong/pong-human.js";
+            import { ComputerPongPlayer } from "/src/examples/pong/pong-computer.js"
+
+            let player1 = new HumanPongPlayer();
+            let player2 = new ComputerPongPlayer();
+
+            let frameRate = 60;
+            let width = 400;
+            let height = 400;
+            let ballVel = 5;
+            let ballAngle = Math.PI / 2 * Math.random() - Math.PI / 4;
+            let ballSize = 20;
+            let paddleWidth = 10;
+            let paddleHeight = 50;
+            let paddleEdgeOffset = 30;
+            let paddleMaxVel = 10;
+            let randomSpinWeight = 1;
+            let paddleSpinWeight = 0.2;
+
+            let engineStepInterval = 1000 / frameRate;
+
+            window.onload = () => runPong(player1, player2, engineStepInterval, width, height, ballVel,
+                    ballAngle, ballSize, paddleWidth, paddleHeight, paddleEdgeOffset, paddleMaxVel,
+                    randomSpinWeight, paddleSpinWeight);
         </script>
     </head>
 
